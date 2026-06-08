@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sonitus · Dictado Rítmico</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --g: #10b981; --gd: #059669; --gl: #ecfdf5; --gb: #a7f3d0;
+      --red: #ef4444; --red-bg: #fef2f2; --red-b: #fecaca;
+      --gold: #f59e0b; --gold-bg: #fffbeb; --gold-b: #fde68a;
+      --g50: #f9fafb; --g100: #f3f4f6; --g200: #e5e7eb; --g300: #d1d5db;
+      --g400: #9ca3af; --g500: #6b7280; --g700: #374151; --g900: #111827;
+      --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+      --sh-sm: 0 1px 3px rgba(0,0,0,.08); --sh-md: 0 4px 16px rgba(0,0,0,.1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 50%, #f5fffe 100%);
+      min-height: 100vh; color: var(--g900); line-height: 1.5;
+      display: flex; flex-direction: column;
+    }
+
+    @keyframes fadeIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes bounce   { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-10px)} }
+    @keyframes shake    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 60%{transform:translateX(7px)} }
+    @keyframes spin     { to{transform:rotate(360deg)} }
+    @keyframes glow     { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)} 50%{box-shadow:0 0 0 10px rgba(16,185,129,0)} }
+    @keyframes pop      { 0%{transform:scale(.7);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Header (juego) ── */
+    .hd {
+      background: #fff; border-bottom: 2px solid var(--gb);
+      color: var(--g700); padding: 10px 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      box-shadow: var(--sh-sm); flex-shrink: 0; position: relative; z-index: 20;
+    }
+    .hd-left  { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .hd-mid   { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .hd-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+    .hd-mode  { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #15803d; }
+    .hd-level { font-size: .6875rem; background: var(--gl); color: var(--gd); border: 1px solid var(--gb); border-radius: 100px; padding: 2px 8px; font-weight: 600; }
+    .hd-lives { display: flex; gap: 3px; font-size: 1.1rem; }
+    .life     { display: inline-block; transition: all .3s; }
+    .life.lost{ opacity: .22; filter: grayscale(1) brightness(.6); transform: scale(.82); }
+    .hd-streak{ background: var(--gl); color: var(--gd); border: 1px solid var(--gb); border-radius: 100px; padding: 2px 9px; font-size: .8125rem; font-weight: 700; }
+    .hd-xp .v { font-size: 1.0625rem; font-weight: 800; color: var(--gd); text-align: right; }
+    .hd-xp .l { font-size: .625rem; color: var(--g400); text-transform: uppercase; letter-spacing: .04em; text-align: right; }
+    .hd-prog  { width: 60px; height: 4px; background: var(--g200); border-radius: 2px; margin-top: 2px; }
+    .hd-prog-fill { height: 100%; background: var(--g); border-radius: 2px; transition: width .5s ease; }
+    .hd-qnum  { font-size: .625rem; color: var(--g400); text-align: right; }
+
+    /* ── Hero / Select screens ── */
+    .brand-hd { text-align: center; }
+    .hero-label { font-size: 11px; text-transform: uppercase; letter-spacing: .18em; color: #22c55e; font-weight: 600; margin-bottom: 16px; }
+    .page-h1 {
+      font-size: clamp(2rem, 7vw, 3.5rem);
+      font-weight: 800; color: #16a34a; letter-spacing: -.025em;
+      line-height: 1.05; margin-bottom: 16px;
+    }
+    .page-sub { font-size: clamp(.9rem, 2.5vw, 1.1rem); color: #15803d; max-width: 36rem; margin: 0 auto 28px; line-height: 1.6; }
+
+    .sel-screen {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 28px 16px; gap: 20px; text-align: center;
+      overflow-y: auto; min-height: 0;
+    }
+    .sel-title { font-size: clamp(1.5rem, 5vw, 2.25rem); font-weight: 800; color: var(--g900); }
+    .sel-sub   { color: var(--g500); font-size: .9375rem; max-width: 400px; }
+
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 460px; }
+    .mode-card {
+      background: #fff; border-radius: var(--r-lg); padding: 24px 14px;
+      border: 2px solid var(--g200); cursor: pointer; transition: all .2s;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+      box-shadow: var(--sh-sm);
+    }
+    .mode-card:hover { border-color: var(--g); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(16,185,129,.18); }
+    .mode-card.full  { grid-column: 1 / -1; }
+    .mode-card-ico  { font-size: 2.75rem; }
+    .mode-card-name { font-size: 1.0625rem; font-weight: 700; color: var(--g900); }
+    .mode-card-desc { font-size: .8125rem; color: var(--g500); line-height: 1.5; }
+
+    .btn-back-sm {
+      background: none; border: 1px solid var(--g300); border-radius: var(--r-sm);
+      color: var(--g500); padding: 6px 14px; font-size: .8125rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .btn-back-sm:hover { background: var(--g100); color: var(--g700); }
+
+    /* ── Config screen ── */
+    .cfg-grid { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 440px; }
+    .cfg-section { }
+    .cfg-label { font-size: .8125rem; font-weight: 700; color: var(--g500); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+    .cfg-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cfg-btn {
+      padding: 10px 18px; border-radius: var(--r-sm); border: 2px solid var(--g200);
+      background: #fff; font-size: .9375rem; font-weight: 600; color: var(--g700);
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .cfg-btn:hover   { border-color: var(--g); color: var(--gd); }
+    .cfg-btn.active  { border-color: var(--g); background: var(--gl); color: var(--gd); }
+    .cfg-btn.ts { font-size: 1.125rem; font-weight: 800; min-width: 60px; }
+
+    /* ── Game main ── */
+    main {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 16px; gap: 14px; max-width: 540px; margin: 0 auto; width: 100%;
+    }
+    .q-card {
+      background: #fff; border-radius: var(--r-lg); padding: 20px 18px;
+      box-shadow: var(--sh-md); width: 100%; border: 1px solid var(--gb);
+      animation: fadeIn .3s ease; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    }
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--gl); color: var(--gd); border: 1px solid var(--gb);
+      border-radius: 100px; padding: 3px 12px; font-size: .8125rem; font-weight: 700;
+    }
+
+    /* Audio visual */
+    .audio-visual {
+      display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; min-height: 54px;
+    }
+    .beat-dot {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--gl); border: 2px solid var(--gb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all .12s;
+    }
+    .beat-dot.playing { background: var(--g); border-color: var(--gd); color: #fff; transform: scale(1.18); }
+    .beat-dot.accent  { background: #dcfce7; border-color: #86efac; }
+
+    .btn-play {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--g); color: #fff; border: none; cursor: pointer;
+      padding: 10px 22px; border-radius: var(--r-sm); font-size: .9375rem; font-weight: 700;
+      font-family: inherit; transition: all .2s; box-shadow: 0 2px 8px rgba(16,185,129,.35);
+    }
+    .btn-play:hover:not(:disabled) { background: var(--gd); transform: translateY(-1px); }
+    .btn-play:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-play.secondary {
+      background: #fff; color: var(--gd); border: 2px solid var(--gb);
+      box-shadow: none;
+    }
+    .btn-play.secondary:hover:not(:disabled) { background: var(--gl); }
+    .spinner-sm { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+
+    /* Staff */
+    .staff-wrap { width: 100%; display: flex; justify-content: center; padding: 4px 0; }
+
+    /* Answer area */
+    .q-label { font-size: .9375rem; font-weight: 700; color: var(--g700); text-align: center; }
+    .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+    .btn-ans {
+      padding: 13px 8px; border-radius: var(--r-md); border: 2px solid var(--g200);
+      background: #fff; font-size: .9375rem; font-weight: 600; color: var(--g700);
+      cursor: pointer; transition: all .18s; font-family: inherit; line-height: 1.3;
+    }
+    .btn-ans:hover:not(:disabled) { border-color: var(--g); color: var(--gd); background: var(--gl); transform: translateY(-1px); }
+    .btn-ans:disabled { cursor: not-allowed; }
+    .btn-ans.correct { border-color: var(--g); background: var(--gl); color: var(--gd); animation: bounce .4s ease; }
+    .btn-ans.wrong   { border-color: var(--red); background: var(--red-bg); color: #991b1b; animation: shake .35s ease; }
+    .btn-ans.reveal  { border-color: var(--g); background: var(--gl); color: var(--gd); }
+
+    /* Feedback */
+    .feedback {
+      width: 100%; border-radius: var(--r-md); padding: 12px 16px;
+      font-size: .9375rem; font-weight: 600; text-align: center;
+      display: none; animation: fadeIn .2s ease;
+    }
+    .feedback.show { display: block; }
+    .feedback.ok   { background: var(--gl); color: var(--gd); border: 1px solid var(--gb); }
+    .feedback.err  { background: var(--red-bg); color: #991b1b; border: 1px solid var(--red-b); }
+    .xp-pill { display: inline-block; background: var(--gold); color: #78350f; border-radius: 100px; padding: 1px 9px; font-size: .8125rem; margin-left: 6px; font-weight: 700; }
+
+    /* ── End screens ── */
+    .end-screen {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 18px; padding: 28px 20px; text-align: center;
+    }
+    .end-ico   { font-size: 3.75rem; animation: pop .5s ease; }
+    .end-title { font-size: 1.875rem; font-weight: 800; color: var(--g900); }
+    .end-sub   { color: var(--g500); font-size: .9375rem; }
+    .stat-row  { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .stat-box  { background: #fff; border-radius: var(--r-md); padding: 14px 20px; box-shadow: var(--sh-sm); text-align: center; min-width: 80px; }
+    .stat-v    { font-size: 1.5rem; font-weight: 800; color: var(--g900); }
+    .stat-l    { font-size: .75rem; color: var(--g500); margin-top: 2px; }
+    .rnd-bar   { width: 100%; max-width: 280px; background: var(--g200); border-radius: 100px; height: 14px; overflow: hidden; }
+    .rnd-fill  { height: 100%; background: linear-gradient(to right, var(--g), var(--gd)); border-radius: 100px; transition: width 1s ease; }
+    .btn-row   { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      background: var(--g); color: #fff; border: none; cursor: pointer;
+      padding: 13px 30px; border-radius: var(--r-sm); font-size: .9375rem; font-weight: 700;
+      font-family: inherit; transition: all .2s; box-shadow: 0 3px 12px rgba(16,185,129,.4);
+    }
+    .btn-primary:hover { background: var(--gd); transform: translateY(-1px); }
+    .btn-secondary {
+      background: #fff; color: var(--g700); border: 2px solid var(--g300); cursor: pointer;
+      padding: 11px 22px; border-radius: var(--r-sm); font-size: .875rem; font-weight: 600;
+      font-family: inherit; transition: all .2s;
+    }
+    .btn-secondary:hover { background: var(--g100); border-color: var(--g400); }
+
+    /* ── Modo Estudio ── */
+    .study-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 0; max-width:800px; margin:0 auto; width:100%; }
+    .study-bar span { font-size:.9375rem; font-weight:700; color:var(--g700); }
+    .study-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; padding:14px 16px 24px; width:100%; max-width:800px; margin:0 auto; }
+    .study-card { background:#fff; border-radius:var(--r-lg); border:1px solid var(--g200); box-shadow:var(--sh-sm); overflow:hidden; animation:fadeIn .3s ease; }
+    .sc-top { padding:12px 14px 4px; display:flex; align-items:baseline; justify-content:space-between; }
+    .sc-top .sc-name { font-size:1rem; font-weight:800; }
+    .sc-top .sc-meta { font-size:.75rem; color:var(--g400); font-weight:600; }
+    .sc-staff { padding:2px 8px; display:flex; justify-content:center; }
+    .sc-char  { padding:0 14px 8px; font-size:.75rem; color:var(--g500); font-style:italic; }
+    .sc-btns  { padding:10px 14px; border-top:1px solid #f3f4f6; display:flex; gap:6px; }
+    .btn-hear { flex:1; padding:7px 4px; border-radius:var(--r-sm); border:1px solid var(--g200); background:#fff; font-size:.75rem; font-weight:600; color:var(--g700); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .btn-hear:hover  { border-color:var(--g); color:var(--gd); background:var(--gl); }
+    .btn-hear.playing{ border-color:var(--g); background:var(--gl); color:var(--gd); }
+
+    /* ── Juego 60s ── */
+    .game60 { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px; gap:12px; max-width:520px; margin:0 auto; width:100%; }
+    .g60-top { display:flex; align-items:center; justify-content:space-between; width:100%; }
+    .timer-ring { position:relative; width:72px; height:72px; flex-shrink:0; }
+    .timer-ring svg { transform:rotate(-90deg); }
+    .timer-ring .tr-bg  { fill:none; stroke:var(--g200); stroke-width:5; }
+    .timer-ring .tr-bar { fill:none; stroke:var(--g); stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset .9s linear; }
+    .timer-ring .tr-txt { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.125rem; font-weight:800; color:var(--g900); }
+    .g60-score { text-align:center; }
+    .g60-score .sv { font-size:2rem; font-weight:800; color:var(--gd); }
+    .g60-score .sl { font-size:.75rem; color:var(--g400); text-transform:uppercase; letter-spacing:.06em; }
+    .g60-streak { background:var(--gold-bg); border:1px solid var(--gold-b); border-radius:100px; padding:3px 12px; font-size:.875rem; font-weight:700; color:#92400e; }
+
+    /* ── Visualizador rítmico SVG ── */
+    .rhythm-vis { width:100%; overflow:hidden; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ── Params ──────────────────────────────────────────────────────────────────
+const tsid = new URLSearchParams(location.search).get('tsid') || '';
+
+// ── Audio ───────────────────────────────────────────────────────────────────
+let _ctx = null;
+function getCtx() {
+  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ctx.state === 'suspended') _ctx.resume();
+  return _ctx;
+}
+
+function playClick(t, isAccent, isRest) {
+  const ctx = getCtx();
+  const freq = isAccent ? 880 : 660;
+  const gain = isRest ? 0.08 : (isAccent ? 0.55 : 0.35);
+  const osc  = ctx.createOscillator();
+  const env  = ctx.createGain();
+  osc.connect(env); env.connect(ctx.destination);
+  osc.type = isRest ? 'sine' : 'square';
+  osc.frequency.value = freq;
+  env.gain.setValueAtTime(gain, t);
+  env.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+// Play a metronome tick (softer, higher)
+function playTick(t) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const env = ctx.createGain();
+  osc.connect(env); env.connect(ctx.destination);
+  osc.type = 'triangle'; osc.frequency.value = 1200;
+  env.gain.setValueAtTime(0.12, t);
+  env.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+  osc.start(t); osc.stop(t + 0.02);
+}
+
+let _playStop = null;
+function stopPlayback() { if (_playStop) { _playStop(); _playStop = null; } }
+
+function playPattern(notes, bpm, onBeat, onEnd) {
+  stopPlayback();
+  const ctx       = getCtx();
+  const beatSec   = 60 / bpm;
+  let   cancelled = false;
+  let   time      = ctx.currentTime + 0.05;
+  let   beatIdx   = 0;
+
+  // First, play a 2-beat count-in metronome
+  playTick(time);
+  playTick(time + beatSec);
+  time += beatSec * 2;
+
+  notes.forEach((note, i) => {
+    const isAccent = (beatIdx === 0);
+    playClick(time, isAccent, note.isRest);
+    const t0 = time;
+    const b  = beatIdx;
+    setTimeout(() => { if (!cancelled && onBeat) onBeat(i, b); }, (t0 - ctx.currentTime) * 1000);
+    time     += note.dur * beatSec;
+    beatIdx  += note.dur;
+  });
+
+  const endT = time;
+  setTimeout(() => { if (!cancelled && onEnd) onEnd(); }, (endT - ctx.currentTime + 0.1) * 1000);
+
+  _playStop = () => { cancelled = true; };
+}
+
+// ── Patrones rítmicos ────────────────────────────────────────────────────────
+// dur = beats (1 = negra en 4/4), isRest = silencio
+const PATTERNS = [
+  {
+    id: 'cuatro-negras',
+    name: 'Cuatro negras',
+    desc: 'El patrón más básico. Una negra por tiempo.',
+    tags: ['4/4', 'básico'],
+    notes: [{dur:1},{dur:1},{dur:1},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'negra-dos-corcheas',
+    name: 'Negra y dos corcheas',
+    desc: 'La negra ocupa un tiempo, las corcheas dividen el siguiente en dos.',
+    tags: ['4/4', 'corcheas'],
+    notes: [{dur:1},{dur:1},{dur:.5},{dur:.5},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'dos-corcheas-negra',
+    name: 'Dos corcheas y negra',
+    desc: 'Dos corcheas en el primer tiempo, negra en el segundo.',
+    tags: ['4/4', 'corcheas'],
+    notes: [{dur:.5},{dur:.5},{dur:1},{dur:.5},{dur:.5},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'cuatro-corcheas',
+    name: 'Cuatro corcheas',
+    desc: 'Cada tiempo se divide en dos corcheas. Movimiento continuo.',
+    tags: ['4/4', 'corcheas'],
+    notes: [{dur:.5},{dur:.5},{dur:.5},{dur:.5},{dur:.5},{dur:.5},{dur:.5},{dur:.5}],
+    timeSig: 4,
+  },
+  {
+    id: 'negra-silencio-corcheas',
+    name: 'Negra, silencio y corcheas',
+    desc: 'Negra, silencio de corchea y corchea crean tensión rítmica.',
+    tags: ['4/4', 'silencios'],
+    notes: [{dur:1},{dur:.5,isRest:true},{dur:.5},{dur:1},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'sincopa-basica',
+    name: 'Síncopa básica',
+    desc: 'Acento en tiempo débil. El secreto del swing.',
+    tags: ['4/4', 'síncopa'],
+    notes: [{dur:.5},{dur:1},{dur:.5},{dur:1},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'tres-cuartos',
+    name: 'Vals (3/4)',
+    desc: 'Tres negras en compás de 3/4. El ritmo del vals.',
+    tags: ['3/4', 'básico'],
+    notes: [{dur:1},{dur:1},{dur:1}],
+    timeSig: 3,
+  },
+  {
+    id: 'tres-cuartos-corcheas',
+    name: 'Vals con corcheas',
+    desc: 'Negra y dos corcheas en compás de 3/4.',
+    tags: ['3/4', 'corcheas'],
+    notes: [{dur:1},{dur:.5},{dur:.5},{dur:1}],
+    timeSig: 3,
+  },
+  {
+    id: 'dos-cuartos',
+    name: 'Marcha (2/4)',
+    desc: 'Dos negras. El ritmo de marcha militar.',
+    tags: ['2/4', 'básico'],
+    notes: [{dur:1},{dur:1}],
+    timeSig: 2,
+  },
+  {
+    id: 'dos-cuartos-corcheas',
+    name: 'Marcha con corcheas',
+    desc: 'Corcheas en compás de 2/4. Movimiento doble.',
+    tags: ['2/4', 'corcheas'],
+    notes: [{dur:.5},{dur:.5},{dur:.5},{dur:.5}],
+    timeSig: 2,
+  },
+  {
+    id: 'semicorcheas',
+    name: 'Semicorcheas',
+    desc: 'Cuatro semicorcheas por tiempo. Muy rápido y enérgico.',
+    tags: ['4/4', 'semicorcheas'],
+    notes: [{dur:.25},{dur:.25},{dur:.25},{dur:.25},{dur:.25},{dur:.25},{dur:.25},{dur:.25},{dur:1},{dur:1}],
+    timeSig: 4,
+  },
+  {
+    id: 'negra-puntillo',
+    name: 'Negra con puntillo',
+    desc: 'Negra con puntillo y corchea. Da sensación de vaivén.',
+    tags: ['4/4', 'puntillo'],
+    notes: [{dur:1.5},{dur:.5},{dur:1.5},{dur:.5}],
+    timeSig: 4,
+  },
+];
+
+// ── Estado ───────────────────────────────────────────────────────────────────
+const S = {
+  mode:        null, // 'dictado' | 'estudio' | '60s'
+  timeSig:     4,    // 2 | 3 | 4
+  minValue:    0.5,  // 1 | 0.5 | 0.25
+  withRests:   false,
+  withSync:    false,
+  total:       10,
+  bpm:         76,
+
+  // game state
+  lives:       3,
+  score:       0,
+  streak:      0,
+  qIdx:        0,
+  answered:    false,
+  pool:        [],
+  current:     null,
+  timer60:     null,
+  timeLeft:    60,
+  score60:     0,
+  streak60:    0,
+};
+
+const appEl = document.getElementById('app');
+function h(id) { return document.getElementById(id); }
+
+// ── SVG Staff ────────────────────────────────────────────────────────────────
+function buildStaffSVG(notes, timeSig, width = 380) {
+  const W = width;
+  const lineSpacing = 10;
+  const staffY      = [40, 50, 60, 70, 80]; // y of 5 staff lines
+  const H           = 128;
+
+  let svg = `<svg viewBox="0 -16 ${W} ${H+16}" width="100%" style="max-width:${W}px;display:block">`;
+
+  // Staff lines
+  staffY.forEach(y => {
+    svg += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#9ca3af" stroke-width="1"/>`;
+  });
+
+  // Treble clef
+  svg += `<text x="4" y="104" font-family="serif" font-size="76" fill="#374151">𝄞</text>`;
+
+  // Time signature (two stacked numbers)
+  const tsX = 46;
+  svg += `<text x="${tsX}" y="${staffY[1]+4}" font-family="serif" font-size="20" font-weight="700" fill="#374151" text-anchor="middle">${timeSig}</text>`;
+  svg += `<text x="${tsX}" y="${staffY[3]+4}" font-family="serif" font-size="20" font-weight="700" fill="#374151" text-anchor="middle">4</text>`;
+
+  // Notes
+  let xCursor = 72;
+  const noteW = Math.min(36, (W - xCursor - 8) / Math.max(notes.length, 1));
+
+  notes.forEach((note) => {
+    const x = xCursor + noteW / 2;
+    if (note.isRest) {
+      // Rest symbol — small rect
+      svg += `<rect x="${x-6}" y="${staffY[1]+2}" width="12" height="7" rx="1" fill="#374151"/>`;
+    } else if (note.dur >= 1) {
+      // Quarter note (filled head + stem)
+      const headY = staffY[2]; // B4 ~ middle line
+      svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
+      svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
+      if (note.dur >= 2) {
+        // Half note = open head
+        svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="white" stroke="#374151" stroke-width="1.5" transform="rotate(-15,${x},${headY})"/>`;
+        svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
+      }
+    } else if (note.dur === 0.5) {
+      // Eighth note (filled head + stem + flag)
+      const headY = staffY[2];
+      svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
+      svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-20}" stroke="#374151" stroke-width="1.5"/>`;
+      svg += `<path d="M${x+4.5} ${headY-20} q8 4 5 12" stroke="#374151" stroke-width="1.5" fill="none"/>`;
+    } else {
+      // Sixteenth note
+      const headY = staffY[2];
+      svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
+      svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
+      svg += `<path d="M${x+4.5} ${headY-22} q8 4 5 10" stroke="#374151" stroke-width="1.5" fill="none"/>`;
+      svg += `<path d="M${x+4.5} ${headY-16} q8 4 5 10" stroke="#374151" stroke-width="1.5" fill="none"/>`;
+    }
+    xCursor += noteW;
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+// ── Pantalla inicio ──────────────────────────────────────────────────────────
+function showHome() {
+  stopPlayback();
+  S.mode = null;
+  appEl.innerHTML = `
+    <div class="sel-screen">
+      <div class="brand-hd">
+        <div class="hero-label">🥁 Sonitus · Dictado Rítmico</div>
+        <h1 class="page-h1">Escucha el Ritmo.<br>Reprodúcelo.</h1>
+        <p class="page-sub">Entrena tu oído rítmico identificando patrones en compases de 2/4, 3/4 y 4/4.</p>
+      </div>
+      <div class="mode-grid">
+        <div class="mode-card" id="btn-dictado">
+          <div class="mode-card-ico">🎧</div>
+          <div class="mode-card-name">Dictado</div>
+          <div class="mode-card-desc">Escucha el patrón rítmico e identifícalo entre las opciones.</div>
+        </div>
+        <div class="mode-card" id="btn-estudio">
+          <div class="mode-card-ico">📚</div>
+          <div class="mode-card-name">Estudio</div>
+          <div class="mode-card-desc">Aprende los patrones rítmicos con notación y audio.</div>
+        </div>
+        <div class="mode-card full" id="btn-60s">
+          <div class="mode-card-ico">⏱</div>
+          <div class="mode-card-name">60 Segundos</div>
+          <div class="mode-card-desc">Identifica tantos ritmos como puedas en un minuto.</div>
+        </div>
+      </div>
+    </div>`;
+
+  h('btn-dictado').onclick = () => showConfig();
+  h('btn-estudio').onclick = () => showStudy();
+  h('btn-60s').onclick     = () => start60();
+}
+
+// ── Config ───────────────────────────────────────────────────────────────────
+function showConfig() {
+  appEl.innerHTML = `
+    <div class="sel-screen">
+      <button class="btn-back-sm" id="btn-back">← Inicio</button>
+      <div class="sel-title">Configurar Dictado</div>
+      <div class="sel-sub">Elige el compás y los valores rítmicos que quieres practicar.</div>
+
+      <div class="cfg-grid">
+        <div class="cfg-section">
+          <div class="cfg-label">Compás</div>
+          <div class="cfg-row" id="ts-row">
+            <button class="cfg-btn ts ${S.timeSig===2?'active':''}" data-ts="2">2/4</button>
+            <button class="cfg-btn ts ${S.timeSig===3?'active':''}" data-ts="3">3/4</button>
+            <button class="cfg-btn ts ${S.timeSig===4?'active':''}" data-ts="4">4/4</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-label">Valores mínimos</div>
+          <div class="cfg-row" id="mv-row">
+            <button class="cfg-btn ${S.minValue===1?'active':''}" data-mv="1">♩ Negra</button>
+            <button class="cfg-btn ${S.minValue===.5?'active':''}" data-mv="0.5">♪ Corchea</button>
+            <button class="cfg-btn ${S.minValue===.25?'active':''}" data-mv="0.25">♬ Semicorchea</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-label">Incluir</div>
+          <div class="cfg-row" id="opt-row">
+            <button class="cfg-btn ${S.withRests?'active':''}" data-opt="rests">Con silencios</button>
+            <button class="cfg-btn ${S.withSync?'active':''}" data-opt="sync">Con síncopas</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-label">Ejercicios</div>
+          <div class="cfg-row" id="total-row">
+            <button class="cfg-btn ${S.total===5?'active':''}" data-total="5">5</button>
+            <button class="cfg-btn ${S.total===10?'active':''}" data-total="10">10</button>
+            <button class="cfg-btn ${S.total===15?'active':''}" data-total="15">15</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-label">Tempo (BPM)</div>
+          <div class="cfg-row" id="bpm-row">
+            <button class="cfg-btn ${S.bpm===60?'active':''}" data-bpm="60">♩=60</button>
+            <button class="cfg-btn ${S.bpm===76?'active':''}" data-bpm="76">♩=76</button>
+            <button class="cfg-btn ${S.bpm===92?'active':''}" data-bpm="92">♩=92</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-start">▶ Comenzar</button>
+    </div>`;
+
+  h('btn-back').onclick = showHome;
+
+  // Toggle handlers
+  document.querySelectorAll('[data-ts]').forEach(b =>
+    b.onclick = () => { S.timeSig = +b.dataset.ts; toggleActive('ts-row', b); }
+  );
+  document.querySelectorAll('[data-mv]').forEach(b =>
+    b.onclick = () => { S.minValue = +b.dataset.mv; toggleActive('mv-row', b); }
+  );
+  document.querySelectorAll('[data-opt]').forEach(b =>
+    b.onclick = () => {
+      if (b.dataset.opt === 'rests') S.withRests = !S.withRests;
+      else S.withSync = !S.withSync;
+      b.classList.toggle('active');
+    }
+  );
+  document.querySelectorAll('[data-total]').forEach(b =>
+    b.onclick = () => { S.total = +b.dataset.total; toggleActive('total-row', b); }
+  );
+  document.querySelectorAll('[data-bpm]').forEach(b =>
+    b.onclick = () => { S.bpm = +b.dataset.bpm; toggleActive('bpm-row', b); }
+  );
+
+  h('btn-start').onclick = startGame;
+}
+
+function toggleActive(rowId, activeBtn) {
+  h(rowId).querySelectorAll('.cfg-btn').forEach(b => b.classList.remove('active'));
+  activeBtn.classList.add('active');
+}
+
+// ── Juego principal ──────────────────────────────────────────────────────────
+function buildPool() {
+  let pool = PATTERNS.filter(p => p.timeSig === S.timeSig);
+  if (!S.withRests) pool = pool.filter(p => !p.notes.some(n => n.isRest));
+  if (!S.withSync)  pool = pool.filter(p => !p.tags.includes('síncopa'));
+  const minDur = S.minValue;
+  pool = pool.filter(p => Math.min(...p.notes.map(n => n.dur)) >= minDur);
+  if (pool.length === 0) pool = PATTERNS.filter(p => p.timeSig === S.timeSig).slice(0, 4);
+  return pool;
+}
+
+function startGame() {
+  S.lives   = 3;
+  S.score   = 0;
+  S.streak  = 0;
+  S.qIdx    = 0;
+  S.answered = false;
+  S.pool    = buildPool();
+  nextQuestion();
+}
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function buildChoices(correct) {
+  // 3 wrong options from pool, different from correct
+  const others = PATTERNS.filter(p => p.id !== correct.id && p.timeSig === S.timeSig);
+  const shuffled = others.sort(() => Math.random() - .5).slice(0, 3);
+  const all = [correct, ...shuffled].sort(() => Math.random() - .5);
+  return all;
+}
+
+function nextQuestion() {
+  if (S.qIdx >= S.total) { showGameEnd(); return; }
+  stopPlayback();
+  S.answered = false;
+  S.current  = pick(S.pool);
+  const choices = buildChoices(S.current);
+  renderGameScreen(choices);
+}
+
+function renderGameScreen(choices) {
+  const p = S.current;
+  const qNum = S.qIdx + 1;
+  const prog = Math.round((S.qIdx / S.total) * 100);
+
+  appEl.innerHTML = `
+    <header class="hd">
+      <div class="hd-left">
+        <button class="btn-back-sm" id="hd-back">←</button>
+        <div>
+          <div class="hd-mode">🎧 Dictado</div>
+          <div class="hd-level">${p.timeSig}/4 · ♩=${S.bpm}</div>
+        </div>
+      </div>
+      <div class="hd-mid">
+        <div class="hd-lives" id="lives-row">
+          ${[0,1,2].map(i => `<span class="life ${i >= S.lives ? 'lost' : ''}">❤️</span>`).join('')}
+        </div>
+        <div class="hd-streak" id="streak-badge">🔥 ${S.streak}</div>
+      </div>
+      <div class="hd-right">
+        <div class="hd-xp"><div class="v">${S.score}</div><div class="l">pts</div></div>
+        <div class="hd-prog"><div class="hd-prog-fill" style="width:${prog}%"></div></div>
+        <div class="hd-qnum">${qNum} / ${S.total}</div>
+      </div>
+    </header>
+
+    <main>
+      <div class="q-card">
+        <span class="mode-badge">🎧 Escucha e identifica</span>
+
+        <div class="audio-visual" id="beat-vis">
+          ${p.notes.map((_, i) => `<div class="beat-dot${i===0?' accent':''}" id="bd-${i}"></div>`).join('')}
+        </div>
+
+        <div class="staff-wrap">
+          ${buildStaffSVG(p.notes.map(() => ({dur:1})), p.timeSig)}
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <button class="btn-play" id="btn-listen">▶ Escuchar</button>
+          <button class="btn-play secondary" id="btn-repeat" disabled>🔊 Repetir</button>
+        </div>
+
+        <div class="q-label">¿Cuál patrón escuchaste?</div>
+        <div class="answer-grid" id="answer-grid">
+          ${choices.map(c => `
+            <button class="btn-ans" data-id="${c.id}">${c.name}</button>
+          `).join('')}
+        </div>
+
+        <div class="feedback" id="fb"></div>
+      </div>
+    </main>`;
+
+  h('hd-back').onclick = () => { stopPlayback(); showHome(); };
+
+  const listenBtn = h('btn-listen');
+  const repeatBtn = h('btn-repeat');
+
+  function doPlay() {
+    listenBtn.disabled = true; repeatBtn.disabled = true;
+    listenBtn.innerHTML = '<span class="spinner-sm"></span> Reproduciendo…';
+    playPattern(p.notes, S.bpm, (i) => {
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('playing'));
+      const dot = h(`bd-${i}`);
+      if (dot) dot.classList.add('playing');
+    }, () => {
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('playing'));
+      listenBtn.innerHTML = '▶ Escuchar'; listenBtn.disabled = false;
+      repeatBtn.disabled = S.answered;
+    });
+  }
+
+  listenBtn.onclick = doPlay;
+  repeatBtn.onclick = doPlay;
+
+  document.querySelectorAll('#answer-grid .btn-ans').forEach(btn => {
+    btn.onclick = () => checkAnswer(btn, choices);
+  });
+}
+
+function checkAnswer(btn, choices) {
+  if (S.answered) return;
+  S.answered = true;
+  stopPlayback();
+
+  const correct = btn.dataset.id === S.current.id;
+  const fb = h('fb');
+
+  document.querySelectorAll('#answer-grid .btn-ans').forEach(b => {
+    b.disabled = true;
+    if (b.dataset.id === S.current.id) b.classList.add(correct ? 'correct' : 'reveal');
+  });
+
+  if (correct) {
+    S.streak++;
+    const xp = 10 + (S.streak > 3 ? 5 : 0);
+    S.score += xp;
+    btn.classList.add('correct');
+    fb.className = 'feedback ok show';
+    fb.innerHTML = `¡Correcto! <span class="xp-pill">+${xp} pts</span>`;
+  } else {
+    S.lives--;
+    S.streak = 0;
+    btn.classList.add('wrong');
+    fb.className = 'feedback err show';
+    fb.innerHTML = `Era: <strong>${S.current.name}</strong>`;
+  }
+
+  h('btn-repeat').disabled = false;
+  updateHeader();
+  postActivity(correct);
+
+  setTimeout(() => {
+    S.qIdx++;
+    if (S.lives <= 0) { showGameEnd(true); return; }
+    nextQuestion();
+  }, 1600);
+}
+
+function updateHeader() {
+  const lr = h('lives-row');
+  if (lr) lr.innerHTML = [0,1,2].map(i => `<span class="life ${i >= S.lives ? 'lost' : ''}">❤️</span>`).join('');
+  const sb = h('streak-badge');
+  if (sb) sb.textContent = `🔥 ${S.streak}`;
+}
+
+// ── Game End ─────────────────────────────────────────────────────────────────
+function showGameEnd(lost = false) {
+  stopPlayback();
+  const pct = S.total > 0 ? Math.round(((S.qIdx - (lost ? 0 : 0)) / S.total) * 100) : 0;
+  const correct = S.score > 0;
+
+  appEl.innerHTML = `
+    <div class="end-screen">
+      <div class="end-ico">${lost ? '😓' : S.score > S.total * 8 ? '🏆' : '🎉'}</div>
+      <div class="end-title">${lost ? '¡Sin vidas!' : '¡Sesión terminada!'}</div>
+      <div class="end-sub">${lost ? 'Sigue practicando, cada vez mejoras más.' : 'Buen trabajo. El oído rítmico se entrena con constancia.'}</div>
+
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-v">${S.score}</div><div class="stat-l">Puntos</div></div>
+        <div class="stat-box"><div class="stat-v">${S.qIdx}</div><div class="stat-l">Ejercicios</div></div>
+        <div class="stat-box"><div class="stat-v">${S.streak}</div><div class="stat-l">Racha</div></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-retry">↺ Otra ronda</button>
+        <button class="btn-secondary" id="btn-home2">Inicio</button>
+      </div>
+    </div>`;
+
+  h('btn-retry').onclick = startGame;
+  h('btn-home2').onclick = showHome;
+}
+
+// ── Estudio ───────────────────────────────────────────────────────────────────
+function showStudy() {
+  appEl.innerHTML = `
+    <div class="study-bar">
+      <span>📚 Patrones Rítmicos</span>
+      <button class="btn-back-sm" id="study-back">← Inicio</button>
+    </div>
+    <div class="study-grid">
+      ${PATTERNS.map(p => `
+        <div class="study-card">
+          <div class="sc-top">
+            <span class="sc-name">${p.name}</span>
+            <span class="sc-meta">${p.tags.join(' · ')}</span>
+          </div>
+          <div class="sc-staff">${buildStaffSVG(p.notes, p.timeSig, 260)}</div>
+          <div class="sc-char">${p.desc}</div>
+          <div class="sc-btns">
+            <button class="btn-hear" data-id="${p.id}" data-bpm="72">▶ ♩=72</button>
+            <button class="btn-hear" data-id="${p.id}" data-bpm="90">▶ ♩=90</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  h('study-back').onclick = showHome;
+
+  document.querySelectorAll('.btn-hear').forEach(btn => {
+    btn.onclick = () => {
+      const p = PATTERNS.find(x => x.id === btn.dataset.id);
+      if (!p) return;
+      const bpm = +btn.dataset.bpm;
+      document.querySelectorAll('.btn-hear').forEach(b => b.classList.remove('playing'));
+      btn.classList.add('playing');
+      playPattern(p.notes, bpm, null, () => btn.classList.remove('playing'));
+    };
+  });
+}
+
+// ── 60 Segundos ──────────────────────────────────────────────────────────────
+function start60() {
+  stopPlayback();
+  S.score60  = 0;
+  S.streak60 = 0;
+  S.answered = false;
+  S.pool     = PATTERNS.filter(p => p.timeSig === 4); // default 4/4 for 60s
+
+  show60Question();
+
+  // Timer
+  S.timeLeft = 60;
+  clearInterval(S.timer60);
+  S.timer60 = setInterval(() => {
+    S.timeLeft--;
+    const ring = document.querySelector('.tr-bar');
+    const txt  = document.querySelector('.tr-txt');
+    if (ring) {
+      const r = 30;
+      const circ = 2 * Math.PI * r;
+      ring.style.strokeDasharray = circ;
+      ring.style.strokeDashoffset = circ * (1 - S.timeLeft / 60);
+    }
+    if (txt) txt.textContent = S.timeLeft;
+    if (S.timeLeft <= 10 && ring) ring.style.stroke = 'var(--red)';
+    if (S.timeLeft <= 0) {
+      clearInterval(S.timer60);
+      show60End();
+    }
+  }, 1000);
+}
+
+function show60Question() {
+  S.answered = false;
+  S.current  = pick(S.pool);
+  const choices = buildChoices(S.current);
+
+  const r = 30, circ = 2 * Math.PI * r;
+  const dashOffset = circ * (1 - S.timeLeft / 60);
+
+  appEl.innerHTML = `
+    <header class="hd">
+      <div class="hd-left">
+        <button class="btn-back-sm" id="hd-back60">←</button>
+        <div class="hd-mode">⏱ 60 Segundos</div>
+      </div>
+      <div class="hd-mid">
+        <div class="g60-score">
+          <div class="sv" id="sc60">${S.score60}</div>
+          <div class="sl">puntos</div>
+        </div>
+      </div>
+      <div class="hd-right">
+        <div class="timer-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="tr-bg"  cx="36" cy="36" r="${r}"/>
+            <circle class="tr-bar" cx="36" cy="36" r="${r}"
+              style="stroke-dasharray:${circ};stroke-dashoffset:${dashOffset}"/>
+          </svg>
+          <div class="tr-txt">${S.timeLeft}</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="game60">
+      <div class="q-card">
+        <div class="audio-visual" id="beat-vis60">
+          ${S.current.notes.map((_, i) => `<div class="beat-dot${i===0?' accent':''}" id="b60-${i}"></div>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn-play" id="btn-listen60">▶ Escuchar</button>
+          <button class="btn-play secondary" id="btn-repeat60" disabled>🔊 Repetir</button>
+        </div>
+
+        <div class="q-label">¿Cuál patrón rítmico es?</div>
+        <div class="answer-grid" id="ag60">
+          ${choices.map(c => `
+            <button class="btn-ans" data-id="${c.id}">${c.name}</button>
+          `).join('')}
+        </div>
+        <div class="feedback" id="fb60"></div>
+      </div>
+    </div>`;
+
+  h('hd-back60').onclick = () => { clearInterval(S.timer60); stopPlayback(); showHome(); };
+
+  function doPlay60() {
+    h('btn-listen60').disabled = true; h('btn-repeat60').disabled = true;
+    h('btn-listen60').innerHTML = '<span class="spinner-sm"></span>';
+    playPattern(S.current.notes, 80, (i) => {
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('playing'));
+      const d = h(`b60-${i}`); if (d) d.classList.add('playing');
+    }, () => {
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('playing'));
+      h('btn-listen60').innerHTML = '▶ Escuchar'; h('btn-listen60').disabled = false;
+      if (!S.answered) h('btn-repeat60').disabled = false;
+    });
+  }
+
+  h('btn-listen60').onclick = doPlay60;
+  h('btn-repeat60').onclick = doPlay60;
+
+  document.querySelectorAll('#ag60 .btn-ans').forEach(btn => {
+    btn.onclick = () => {
+      if (S.answered) return;
+      S.answered = true;
+      stopPlayback();
+      const ok = btn.dataset.id === S.current.id;
+      document.querySelectorAll('#ag60 .btn-ans').forEach(b => {
+        b.disabled = true;
+        if (b.dataset.id === S.current.id) b.classList.add(ok ? 'correct' : 'reveal');
+      });
+      if (ok) {
+        S.streak60++;
+        S.score60 += 10 + (S.streak60 > 3 ? 5 : 0);
+        btn.classList.add('correct');
+        h('fb60').className = 'feedback ok show';
+        h('fb60').textContent = '¡Correcto!';
+      } else {
+        S.streak60 = 0;
+        btn.classList.add('wrong');
+        h('fb60').className = 'feedback err show';
+        h('fb60').innerHTML = `Era: <strong>${S.current.name}</strong>`;
+      }
+      const sv = h('sc60'); if (sv) sv.textContent = S.score60;
+      postActivity(ok);
+      setTimeout(() => { if (S.timeLeft > 0) show60Question(); }, 1200);
+    };
+  });
+}
+
+function show60End() {
+  stopPlayback();
+  appEl.innerHTML = `
+    <div class="end-screen">
+      <div class="end-ico">${S.score60 >= 80 ? '🏆' : S.score60 >= 40 ? '🎉' : '🥁'}</div>
+      <div class="end-title">¡Tiempo!</div>
+      <div class="end-sub">60 segundos de entrenamiento rítmico.</div>
+
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-v">${S.score60}</div><div class="stat-l">Puntos</div></div>
+        <div class="stat-box"><div class="stat-v">${S.streak60}</div><div class="stat-l">Racha</div></div>
+      </div>
+
+      <div class="rnd-bar"><div class="rnd-fill" id="pct-bar" style="width:0%"></div></div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-retry60">↺ Otra vez</button>
+        <button class="btn-secondary" id="btn-home60">Inicio</button>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(() => {
+    const bar = h('pct-bar');
+    if (bar) bar.style.width = Math.min(100, S.score60) + '%';
+  });
+
+  h('btn-retry60').onclick = start60;
+  h('btn-home60').onclick  = showHome;
+}
+
+// ── Fire-and-forget activity ──────────────────────────────────────────────────
+function postActivity(correct) {
+  fetch('/api/activity/rhythm-attempt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tsid, correct, pattern: S.current?.id }),
+  }).catch(() => {});
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+showHome();
+</script>
+</body>
+</html>

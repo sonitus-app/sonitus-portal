@@ -51,6 +51,8 @@ const CHALLENGE_POOL = [
   { tool: 'studio',          description: 'Practica Lectura de Ritmo por al menos 5 minutos',        target: 1,  xp: 45 },
   { tool: 'academia',        description: 'Practica Lectura de Notas hoy',                           target: 1,  xp: 40 },
   { tool: 'academia',        description: 'Completa una sesión de Lectura de Notas de 10 minutos',   target: 1,  xp: 55 },
+  { tool: 'rhythmtrainer',  description: 'Identifica correctamente 5 ritmos en el Dictado Rítmico',  target: 5,  xp: 45 },
+  { tool: 'rhythmtrainer',  description: 'Completa 10 ejercicios de Dictado Rítmico hoy',            target: 10, xp: 60 },
 ];
 
 function getLevelInfo(xp) {
@@ -317,7 +319,7 @@ async function loadDashboard() {
   const badges    = achSnap.docs.map(d => d.data()).sort((a, b) => a.earnedAt?.seconds - b.earnedAt?.seconds);
 
   const toolStats = {};
-  for (const tool of ['studio', 'academia', 'intervaltrainer']) {
+  for (const tool of ['studio', 'academia', 'intervaltrainer', 'rhythmtrainer']) {
     const ts = sessions.filter(s => s.tool === tool && s.durationSeconds > 0);
     toolStats[tool] = ts.length
       ? { sessions: ts.length, total_seconds: ts.reduce((a, s) => a + (s.durationSeconds || 0), 0), last_used: ts[0]?.startTime }
@@ -342,6 +344,7 @@ async function loadDashboard() {
   const stats = {
     studio: toolStats.studio, academia: toolStats.academia,
     intervaltrainer: toolStats.intervaltrainer,
+    rhythmtrainer: toolStats.rhythmtrainer,
     intervalAttempts: { total: ivTotal, correct: ivCorrect },
   };
   const gami = { level: levelInfo, badges, streak, dailyChallenge: challenge };
@@ -395,6 +398,7 @@ function showDashboard(stats, gami) {
   const st  = stats.studio;
   const ac  = stats.academia;
   const iv  = stats.intervaltrainer;
+  const rt  = stats.rhythmtrainer;
   const ia  = stats.intervalAttempts ?? { total: 0, correct: 0 };
   const ivAcc = ia.total > 0 ? Math.round((ia.correct / ia.total) * 100) : null;
   const firstName = escHtml(S.user.fullName.split(' ')[0]);
@@ -468,6 +472,19 @@ function showDashboard(stats, gami) {
             </div>
             <button class="btn-open intervals open-tool" data-tool="intervaltrainer">Abrir →</button>
           </div>
+
+          <div class="tool-card">
+            <div class="tool-icon rhythm" style="background:#fef3c7;border-color:#fde68a">🥁</div>
+            <span class="tool-badge rhythm" style="background:#fef3c7;color:#92400e;border-color:#fde68a">Ritmo</span>
+            <div class="tool-name">Dictado Rítmico</div>
+            <div class="tool-desc">Escucha patrones rítmicos y reprodúcelos. Entrena tu oído rítmico con compases de 2/4, 3/4 y 4/4.</div>
+            <div class="tool-meta">
+              <span>⏱ ${rt ? fmtDuration(rt.total_seconds) : '—'}</span>
+              <span>📅 ${rt ? timeAgo(rt.last_used) : 'Nunca'}</span>
+              <span>🎯 ${rt ? rt.sessions : 0} ses.</span>
+            </div>
+            <button class="btn-open rhythm open-tool" data-tool="rhythmtrainer" style="background:#d97706">Abrir →</button>
+          </div>
         </div>
       </div>
     </div>`;
@@ -495,6 +512,7 @@ function showToolView(tool) {
   const labels = {
     studio: '🥁 Lectura de Ritmo', academia: '🎼 Lectura de Notas',
     intervaltrainer: '🎧 Entrenador de Intervalos',
+    rhythmtrainer: '🥁 Dictado Rítmico',
   };
   const label = labels[tool] ?? tool;
   const src   = `tools/sonitus-${tool}.html?tsid=${S.toolSessionId}`;

@@ -80,6 +80,7 @@
     .sel-screen {
       flex: 1; display: flex; flex-direction: column; align-items: center;
       justify-content: center; padding: 28px 16px; gap: 20px; text-align: center;
+      overflow-y: auto; min-height: 0;
     }
     .sel-title { font-size: clamp(1.5rem, 5vw, 2.25rem); font-weight: 800; color: var(--g900); }
     .sel-sub   { color: var(--g500); font-size: .9375rem; max-width: 400px; }
@@ -226,6 +227,18 @@
     .btn-hear:hover { border-color:var(--g); color:var(--gd); background:var(--gl); }
     .btn-hear.playing { border-color:var(--g); background:var(--gl); color:var(--gd); }
 
+    /* ── Selector de dirección (estilo teoria.com) ── */
+    .dir-section { width: 100%; max-width: 400px; }
+    .dir-label   { font-size: .8125rem; font-weight: 700; color: var(--g500); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .dir-row     { display: flex; gap: 6px; flex-wrap: wrap; }
+    .dir-btn {
+      padding: 7px 14px; border-radius: var(--r-sm); border: 2px solid var(--g200);
+      background: #fff; font-size: .8125rem; font-weight: 600; color: var(--g700);
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .dir-btn:hover   { border-color: var(--g); color: var(--gd); }
+    .dir-btn.active  { border-color: var(--g); background: var(--gl); color: var(--gd); }
+
     /* ── Juego 60s ── */
     .game60 { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px; gap:12px; max-width:520px; margin:0 auto; width:100%; }
     .g60-top { display:flex; align-items:center; justify-content:space-between; width:100%; }
@@ -319,7 +332,7 @@ const STEP_SOL = ['Do','Re','Mi','Fa','Sol','La','Si','Do'];
 const S = {
   ctx: null,
   tsid: new URLSearchParams(location.search).get('tsid'),
-  mode: null, level: null, pool: [],
+  mode: null, level: null, pool: [], playMode: 'random', accidentals: 'all',
   lives: 3, maxLives: 3, score: 0, streak: 0, maxStreak: 0,
   qNum: 0, qTotal: 10, roundCorrect: 0, roundXP: 0,
   current: null, answered: false, playing: false,
@@ -447,11 +460,11 @@ function buildStaffSVG(semitones, answered, isCorrect) {
   const label = (cx, cy, txt) =>
     `<text x="${cx}" y="${cy}" text-anchor="middle" font-size="10" fill="${stroke}" stroke="none" font-family="sans-serif" font-weight="600">${txt}</text>`;
 
-  let o = `<svg viewBox="0 0 310 128" width="100%" style="max-width:320px;overflow:visible" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round">`;
+  let o = `<svg viewBox="0 -16 310 144" width="100%" style="max-width:320px;overflow:visible" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round">`;
 
   for (const ly of LINES) o += `<line x1="10" y1="${ly}" x2="298" y2="${ly}"/>`;
   o += `<line x1="10" y1="42" x2="10" y2="90" stroke-width="1.5"/>`;
-  o += `<text x="7" y="100" font-family="serif" font-size="68" fill="${stroke}" stroke="none">𝄞</text>`;
+  o += `<text x="4" y="104" font-family="serif" font-size="76" fill="${stroke}" stroke="none">𝄞</text>`;
 
   // Root: C4 always needs ledger
   o += ledger(rootX, rootY);
@@ -592,7 +605,7 @@ function showModeSelect() {
 }
 
 // ── Modo Estudio ──────────────────────────────────────────────────────────────
-const IV_CHARS = ['Una nota repite. Unidad perfecta.','Paso cromático. Máxima tensión de 2da.','Paso natural de la escala mayor.','Color triste, melancólico.','Color alegre y brillante.','Salto limpio y estable.','Máxima tensión. Diabolus in musica.','Poder y estabilidad. El intervalo del rock.','Nostalgia, dulzura melancólica.','Amplitud y apertura. Muy cantábile.','Tensión que busca resolver.','Tensión intensa, casi resuelta.','Regreso al origen, una octava arriba.'];
+const IV_CHARS = ['La misma nota repetida. Unidad perfecta.','Paso cromático. Máxima tensión de 2.ª.','Paso natural de la escala mayor.','Color triste y melancólico.','Color alegre y brillante.','Salto limpio y estable.','Máxima tensión. Diabolus in musica.','Poder y estabilidad. El intervalo del rock.','Nostalgia, dulzura melancólica.','Amplitud y apertura. Muy cantabile.','Tensión que busca resolverse.','Tensión intensa, casi resuelta.','Regreso al origen, una octava arriba.'];
 
 function showStudyMode() {
   hideHeader();
@@ -768,10 +781,39 @@ function showLevelSelect(mode) {
           </div>`;
         }).join('')}
       </div>
+      <div class="dir-section">
+        ${mode === 'oido' ? `
+        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">Dirección</div>
+        <div class="dir-row" id="dir-row" style="margin-bottom:10px">
+          <button class="dir-btn active" data-pm="random">↕ Aleatoria</button>
+          <button class="dir-btn" data-pm="ascending">↗ Ascendente</button>
+          <button class="dir-btn" data-pm="descending">↘ Descendente</button>
+          <button class="dir-btn" data-pm="harmonic">≡ Armónico</button>
+        </div>` : ''}
+        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">Alteraciones</div>
+        <div class="dir-row" id="acc-row">
+          <button class="dir-btn active" data-acc="all">Con ♭♯</button>
+          <button class="dir-btn" data-acc="natural">Sin ♭♯ — solo naturales</button>
+        </div>
+      </div>
       <button class="btn-back-sm" id="btn-back">← Volver</button>
     </div>`;
   document.querySelectorAll('.level-card').forEach(el =>
     el.addEventListener('click', () => startGame(mode, el.dataset.level)));
+  document.querySelectorAll('#dir-row .dir-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#dir-row .dir-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.playMode = btn.dataset.pm;
+    });
+  });
+  document.querySelectorAll('#acc-row .dir-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#acc-row .dir-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.accidentals = btn.dataset.acc;
+    });
+  });
   document.getElementById('btn-back').addEventListener('click', showModeSelect);
 }
 
@@ -779,7 +821,11 @@ function showLevelSelect(mode) {
 function startGame(mode, level) {
   S.mode  = mode;
   S.level = level;
-  S.pool  = INTERVALS.filter(i => LEVELS[level].sts.includes(i.st));
+  S.pool  = INTERVALS.filter(i =>
+    LEVELS[level].sts.includes(i.st) &&
+    (S.accidentals === 'all' || INOTE[i.st].acc === '')
+  );
+  if (S.pool.length === 0) S.pool = [INTERVALS[0]]; // fallback a Unísono
   S.lives = S.maxLives = 3;
   S.score = 0; S.streak = 0; S.maxStreak = 0;
   S.qNum  = 0; S.roundCorrect = 0; S.roundXP = 0;
@@ -797,7 +843,7 @@ async function nextQuestion() {
 
   const interval = pick(S.pool);
   const choices  = buildChoices(interval, S.pool);
-  const pm       = S.mode === 'oido' ? pick(PLAY_MODES) : null;
+  const pm       = S.mode === 'oido' ? (S.playMode === 'random' ? pick(PLAY_MODES) : S.playMode) : null;
   S.current      = { interval, pm, choices, startMs: null };
 
   if (S.mode === 'oido') {
