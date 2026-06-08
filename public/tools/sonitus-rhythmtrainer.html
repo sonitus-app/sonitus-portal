@@ -234,6 +234,19 @@
 
     /* ── Visualizador rítmico SVG ── */
     .rhythm-vis { width:100%; overflow:hidden; }
+
+    /* ── BETA ── */
+    .beta-tag {
+      display: inline-block; font-size: .6rem; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; background: #7c3aed; color: #fff;
+      border-radius: 4px; padding: 1px 5px; margin-left: 5px; vertical-align: middle;
+    }
+    .beta-banner {
+      width: 100%; max-width: 460px; background: #f5f3ff; border: 1.5px solid #ddd6fe;
+      border-radius: var(--r-md); padding: 10px 14px; font-size: .8125rem; color: #5b21b6;
+      text-align: center;
+    }
+    .beta-banner strong { color: #7c3aed; }
   </style>
 </head>
 <body>
@@ -408,6 +421,57 @@ const PATTERNS = [
     notes: [{dur:1.5},{dur:.5},{dur:1.5},{dur:.5}],
     timeSig: 4,
   },
+  // ── BETA: Tresillos ──────────────────────────────────────────────────────
+  {
+    id: 'tresillo-basico',
+    name: 'Tresillo básico',
+    desc: 'Tres notas en el espacio de una negra. La esencia del jazz y el blues.',
+    tags: ['4/4', 'tresillos'],
+    beta: true,
+    notes: [
+      {dur:1/3,triplet:true},{dur:1/3,triplet:true},{dur:1/3,triplet:true},
+      {dur:1},{dur:1},{dur:1}
+    ],
+    timeSig: 4,
+  },
+  {
+    id: 'negra-tresillo',
+    name: 'Negra y tresillo',
+    desc: 'Una negra seguida de un tresillo. Combina pulso simple y terciado.',
+    tags: ['4/4', 'tresillos'],
+    beta: true,
+    notes: [
+      {dur:1},
+      {dur:1/3,triplet:true},{dur:1/3,triplet:true},{dur:1/3,triplet:true},
+      {dur:1},{dur:1}
+    ],
+    timeSig: 4,
+  },
+  {
+    id: 'dos-tresillos',
+    name: 'Dos tresillos seguidos',
+    desc: 'Los dos primeros tiempos divididos en tresillos. Feeling de shuffle.',
+    tags: ['4/4', 'tresillos'],
+    beta: true,
+    notes: [
+      {dur:1/3,triplet:true},{dur:1/3,triplet:true},{dur:1/3,triplet:true},
+      {dur:1/3,triplet:true},{dur:1/3,triplet:true},{dur:1/3,triplet:true},
+      {dur:1},{dur:1}
+    ],
+    timeSig: 4,
+  },
+  {
+    id: 'tresillo-3-4',
+    name: 'Tresillo en 3/4',
+    desc: 'Primer tiempo dividido en tresillo en compás de 3/4. Ritmo de habanera.',
+    tags: ['3/4', 'tresillos'],
+    beta: true,
+    notes: [
+      {dur:1/3,triplet:true},{dur:1/3,triplet:true},{dur:1/3,triplet:true},
+      {dur:1},{dur:1}
+    ],
+    timeSig: 3,
+  },
 ];
 
 // ── Estado ───────────────────────────────────────────────────────────────────
@@ -415,8 +479,9 @@ const S = {
   mode:        null, // 'dictado' | 'estudio' | '60s'
   timeSig:     4,    // 2 | 3 | 4
   minValue:    0.5,  // 1 | 0.5 | 0.25
-  withRests:   false,
-  withSync:    false,
+  withRests:    false,
+  withSync:     false,
+  withTriplets: false,
   total:       10,
   bpm:         76,
 
@@ -463,36 +528,62 @@ function buildStaffSVG(notes, timeSig, width = 380) {
   let xCursor = 72;
   const noteW = Math.min(36, (W - xCursor - 8) / Math.max(notes.length, 1));
 
-  notes.forEach((note) => {
+  // Track triplet group x positions for bracket rendering
+  const tripletGroups = []; // [{x1, x2, y}]
+  let tripletStart = null, tripletCount = 0;
+
+  notes.forEach((note, i) => {
     const x = xCursor + noteW / 2;
+    const headY = staffY[2];
+
+    // Track triplet bracket start/end
+    if (note.triplet) {
+      if (tripletStart === null) { tripletStart = x; tripletCount = 1; }
+      else { tripletCount++; }
+      if (tripletCount === 3) {
+        tripletGroups.push({ x1: tripletStart, x2: x, y: headY - 26 });
+        tripletStart = null; tripletCount = 0;
+      }
+    } else {
+      tripletStart = null; tripletCount = 0;
+    }
+
     if (note.isRest) {
-      // Rest symbol — small rect
       svg += `<rect x="${x-6}" y="${staffY[1]+2}" width="12" height="7" rx="1" fill="#374151"/>`;
+    } else if (note.triplet) {
+      // Triplet note — small filled ellipse (eighth-note-sized), no flag (beam implied)
+      svg += `<ellipse cx="${x}" cy="${headY}" rx="4" ry="3" fill="#7c3aed" transform="rotate(-15,${x},${headY})"/>`;
+      svg += `<line x1="${x+3.5}" y1="${headY-1}" x2="${x+3.5}" y2="${headY-18}" stroke="#7c3aed" stroke-width="1.5"/>`;
+    } else if (note.dur >= 2) {
+      // Half note — open head
+      svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="white" stroke="#374151" stroke-width="1.5" transform="rotate(-15,${x},${headY})"/>`;
+      svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
     } else if (note.dur >= 1) {
-      // Quarter note (filled head + stem)
-      const headY = staffY[2]; // B4 ~ middle line
+      // Quarter note
       svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
       svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
-      if (note.dur >= 2) {
-        // Half note = open head
-        svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="white" stroke="#374151" stroke-width="1.5" transform="rotate(-15,${x},${headY})"/>`;
-        svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
-      }
-    } else if (note.dur === 0.5) {
-      // Eighth note (filled head + stem + flag)
-      const headY = staffY[2];
+    } else if (note.dur >= 0.5) {
+      // Eighth note
       svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
       svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-20}" stroke="#374151" stroke-width="1.5"/>`;
       svg += `<path d="M${x+4.5} ${headY-20} q8 4 5 12" stroke="#374151" stroke-width="1.5" fill="none"/>`;
     } else {
       // Sixteenth note
-      const headY = staffY[2];
       svg += `<ellipse cx="${x}" cy="${headY}" rx="5" ry="3.5" fill="#374151" transform="rotate(-15,${x},${headY})"/>`;
       svg += `<line x1="${x+4.5}" y1="${headY-1}" x2="${x+4.5}" y2="${headY-22}" stroke="#374151" stroke-width="1.5"/>`;
       svg += `<path d="M${x+4.5} ${headY-22} q8 4 5 10" stroke="#374151" stroke-width="1.5" fill="none"/>`;
       svg += `<path d="M${x+4.5} ${headY-16} q8 4 5 10" stroke="#374151" stroke-width="1.5" fill="none"/>`;
     }
     xCursor += noteW;
+  });
+
+  // Draw triplet brackets: bracket + "3"
+  tripletGroups.forEach(({ x1, x2, y }) => {
+    const mx = (x1 + x2) / 2;
+    svg += `<path d="M${x1-3} ${y+4} L${x1-3} ${y} L${x2+3} ${y} L${x2+3} ${y+4}"
+      stroke="#7c3aed" stroke-width="1.2" fill="none"/>`;
+    svg += `<text x="${mx}" y="${y-1}" font-size="9" font-weight="700" fill="#7c3aed"
+      text-anchor="middle" font-family="serif">3</text>`;
   });
 
   svg += '</svg>';
@@ -526,6 +617,9 @@ function showHome() {
           <div class="mode-card-name">60 Segundos</div>
           <div class="mode-card-desc">Identifica tantos ritmos como puedas en un minuto.</div>
         </div>
+      </div>
+      <div class="beta-banner">
+        🔬 <strong>BETA:</strong> Tresillos disponibles — actívalos en Configurar Dictado o explóralos en Estudio.
       </div>
     </div>`;
 
@@ -566,6 +660,7 @@ function showConfig() {
           <div class="cfg-row" id="opt-row">
             <button class="cfg-btn ${S.withRests?'active':''}" data-opt="rests">Con silencios</button>
             <button class="cfg-btn ${S.withSync?'active':''}" data-opt="sync">Con síncopas</button>
+            <button class="cfg-btn ${S.withTriplets?'active':''}" data-opt="triplets">Con tresillos <span class="beta-tag">BETA</span></button>
           </div>
         </div>
 
@@ -602,8 +697,9 @@ function showConfig() {
   );
   document.querySelectorAll('[data-opt]').forEach(b =>
     b.onclick = () => {
-      if (b.dataset.opt === 'rests') S.withRests = !S.withRests;
-      else S.withSync = !S.withSync;
+      if (b.dataset.opt === 'rests')    S.withRests    = !S.withRests;
+      else if (b.dataset.opt === 'sync') S.withSync     = !S.withSync;
+      else                               S.withTriplets = !S.withTriplets;
       b.classList.toggle('active');
     }
   );
@@ -625,11 +721,13 @@ function toggleActive(rowId, activeBtn) {
 // ── Juego principal ──────────────────────────────────────────────────────────
 function buildPool() {
   let pool = PATTERNS.filter(p => p.timeSig === S.timeSig);
-  if (!S.withRests) pool = pool.filter(p => !p.notes.some(n => n.isRest));
-  if (!S.withSync)  pool = pool.filter(p => !p.tags.includes('síncopa'));
+  if (!S.withRests)    pool = pool.filter(p => !p.notes.some(n => n.isRest));
+  if (!S.withSync)     pool = pool.filter(p => !p.tags.includes('síncopa'));
+  if (!S.withTriplets) pool = pool.filter(p => !p.tags.includes('tresillos'));
   const minDur = S.minValue;
-  pool = pool.filter(p => Math.min(...p.notes.map(n => n.dur)) >= minDur);
-  if (pool.length === 0) pool = PATTERNS.filter(p => p.timeSig === S.timeSig).slice(0, 4);
+  // Triplet patterns bypass minValue (1/3 beat is smaller than any minValue)
+  pool = pool.filter(p => p.tags.includes('tresillos') || Math.min(...p.notes.map(n => n.dur)) >= minDur);
+  if (pool.length === 0) pool = PATTERNS.filter(p => p.timeSig === S.timeSig && !p.beta).slice(0, 4);
   return pool;
 }
 
@@ -829,7 +927,7 @@ function showStudy() {
       ${PATTERNS.map(p => `
         <div class="study-card">
           <div class="sc-top">
-            <span class="sc-name">${p.name}</span>
+            <span class="sc-name">${p.name}${p.beta ? ' <span class="beta-tag">BETA</span>' : ''}</span>
             <span class="sc-meta">${p.tags.join(' · ')}</span>
           </div>
           <div class="sc-staff">${buildStaffSVG(p.notes, p.timeSig, 260)}</div>
