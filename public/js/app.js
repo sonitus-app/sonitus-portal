@@ -23,6 +23,7 @@ const S = {
   timerInterval: null,
   currentTool:   null,
   dailyChallenge: null,
+  lang:          'es',
 };
 
 // ── Gamificación (client-side) ─────────────────────────────────────────────
@@ -54,6 +55,97 @@ const CHALLENGE_POOL = [
   { tool: 'rhythmtrainer',  description: 'Identifica correctamente 5 ritmos en el Dictado Rítmico',  target: 5,  xp: 45 },
   { tool: 'rhythmtrainer',  description: 'Completa 10 ejercicios de Dictado Rítmico hoy',            target: 10, xp: 60 },
 ];
+
+// ── Traducciones ───────────────────────────────────────────────────────────
+const T = {
+  es: {
+    subtitle:     'Herramientas Educativas',
+    logout:       'Salir',
+    helpBtn:      'Ayuda',
+    langBtn:      '🇺🇸 English',
+    greeting:     n => `¡Hola, ${n}!`,
+    greetingSub:  'Elige tu herramienta para comenzar a practicar',
+    open:         'Abrir →',
+    never:        'Nunca',
+    sessions:     'ses.',
+    noData:       'Sin datos',
+    attempts:     'intentos',
+    dailyTitle:   '🎯 Desafío del Día',
+    dailyDone:    '✅ ¡Completado hoy!',
+    streakDays:   n => `😊 ${n} días`,
+    back:         '← Volver',
+    time:         'Tiempo:',
+    tools: {
+      studio:          { name: 'Lectura de Ritmo',   badge: 'Práctica', desc: 'Genera ejercicios de lectura rítmica a primera vista con retroalimentación de audio instantánea.' },
+      academia:        { name: 'Lectura de Notas',   badge: 'Teoría',   desc: 'Lectura musical a primera vista con teoría, entrenamiento auditivo y ejercicios progresivos.' },
+      intervaltrainer: { name: 'Intervalos',         badge: 'Oído',     desc: 'Entrena tu oído identificando intervalos musicales: desde el unísono hasta la octava.' },
+      rhythmtrainer:   { name: 'Dictado Rítmico',    badge: 'Ritmo',    desc: 'Escucha patrones rítmicos y reprodúcelos. Entrena tu oído rítmico con compases de 2/4, 3/4 y 4/4.' },
+    },
+    toolLabels: { studio: '🥁 Lectura de Ritmo', academia: '🎼 Lectura de Notas', intervaltrainer: '🎧 Entrenador de Intervalos', rhythmtrainer: '🥁 Dictado Rítmico' },
+    help: {
+      title:   'Ayuda · Sonitus Portal',
+      intro:   'Sonitus Portal es una plataforma de educación musical. Cada herramienta entrena una habilidad distinta usando audio, notación y gamificación.',
+      toolsH:  'Herramientas',
+      xpH:     'Sistema de XP y Niveles',
+      xpText:  'Ganas XP completando sesiones, acertando ejercicios y cumpliendo el Desafío del Día. Al acumular XP subes de nivel: Aprendiz → Estudiante → Músico → Avanzado → Maestro.',
+      dcH:     'Desafío del Día',
+      dcText:  'Cada día se genera un reto personalizado. Complétalo para ganar XP extra. Se reinicia a medianoche.',
+      faqH:    'Preguntas frecuentes',
+      faq: [
+        ['¿Necesito cuenta para usar el portal?', 'Sí. La cuenta guarda tu progreso, XP y rachas entre sesiones.'],
+        ['¿Funciona en móvil?', 'Sí, el portal es responsive y funciona en cualquier dispositivo moderno.'],
+        ['¿Por qué no escucho audio?', 'Haz clic en cualquier botón primero — los navegadores requieren una interacción para activar el audio.'],
+        ['¿Qué significa BETA?', 'Las funciones marcadas con BETA están en prueba activa. Funcionan pero pueden cambiar.'],
+        ['¿Cómo reinicio mi progreso?', 'Actualmente no hay opción de reinicio. Contacta al administrador si lo necesitas.'],
+      ],
+      close: '← Volver al inicio',
+    },
+  },
+  en: {
+    subtitle:     'Music Education Tools',
+    logout:       'Log out',
+    helpBtn:      'Help',
+    langBtn:      '🇲🇽 Español',
+    greeting:     n => `Hello, ${n}!`,
+    greetingSub:  'Choose a tool to start practicing',
+    open:         'Open →',
+    never:        'Never',
+    sessions:     'sess.',
+    noData:       'No data',
+    attempts:     'attempts',
+    dailyTitle:   '🎯 Daily Challenge',
+    dailyDone:    '✅ Completed today!',
+    streakDays:   n => `😊 ${n} days`,
+    back:         '← Back',
+    time:         'Time:',
+    tools: {
+      studio:          { name: 'Rhythm Reading',     badge: 'Practice', desc: 'Generate sight-reading rhythm exercises with instant audio feedback.' },
+      academia:        { name: 'Note Reading',       badge: 'Theory',   desc: 'Musical sight-reading with theory, ear training, and progressive exercises.' },
+      intervaltrainer: { name: 'Intervals',          badge: 'Ear',      desc: 'Train your ear identifying musical intervals: from unison to the octave.' },
+      rhythmtrainer:   { name: 'Rhythm Dictation',   badge: 'Rhythm',   desc: 'Listen to rhythmic patterns and identify them. Train your rhythmic ear with 2/4, 3/4 and 4/4 time.' },
+    },
+    toolLabels: { studio: '🥁 Rhythm Reading', academia: '🎼 Note Reading', intervaltrainer: '🎧 Interval Trainer', rhythmtrainer: '🥁 Rhythm Dictation' },
+    help: {
+      title:   'Help · Sonitus Portal',
+      intro:   'Sonitus Portal is a music education platform. Each tool trains a different skill using audio, notation, and gamification.',
+      toolsH:  'Tools',
+      xpH:     'XP & Levels System',
+      xpText:  'Earn XP by completing sessions, answering exercises correctly, and finishing the Daily Challenge. As you accumulate XP you level up: Learner → Student → Musician → Advanced → Master.',
+      dcH:     'Daily Challenge',
+      dcText:  'A personalized challenge is generated each day. Complete it to earn bonus XP. Resets at midnight.',
+      faqH:    'Frequently Asked Questions',
+      faq: [
+        ['Do I need an account?', 'Yes. Your account saves your progress, XP, and streaks between sessions.'],
+        ['Does it work on mobile?', 'Yes, the portal is responsive and works on any modern device.'],
+        ['Why can\'t I hear audio?', 'Click any button first — browsers require a user interaction to enable audio.'],
+        ['What does BETA mean?', 'Features marked BETA are in active testing. They work but may change.'],
+        ['How do I reset my progress?', 'There is currently no self-service reset. Contact the administrator if needed.'],
+      ],
+      close: '← Back to dashboard',
+    },
+  },
+};
+function t(key) { return T[S.lang][key]; }
 
 function getLevelInfo(xp) {
   const idx = LEVELS.reduce((best, l, i) => (xp >= l.min ? i : best), 0);
@@ -380,12 +472,12 @@ function renderDailyCard(gami) {
   if (!gami?.dailyChallenge) return '';
   const { dailyChallenge: ch } = gami;
   const action = ch.completed
-    ? `<div class="dc-done">✅ ¡Completado hoy!</div>`
-    : `<button class="btn-open rhythm open-tool" data-tool="${ch.tool}">Abrir →</button>`;
+    ? `<div class="dc-done">${t('dailyDone')}</div>`
+    : `<button class="btn-open rhythm open-tool" data-tool="${ch.tool}">${t('open')}</button>`;
   return `
     <div class="daily-card">
       <div class="dc-header">
-        <span>🎯 Desafío del Día</span>
+        <span>${t('dailyTitle')}</span>
         <span class="dc-xp">+${ch.xp_reward} XP</span>
       </div>
       <p class="dc-desc">${escHtml(ch.config.description)}</p>
@@ -413,86 +505,113 @@ function showDashboard(stats, gami) {
             <img src="logo.jpeg" class="ico" style="width:auto;height:1.5rem;object-fit:contain;filter:invert(1) brightness(2);" alt="" />
             <div>
               <div class="name">Sonitus Portal</div>
-              <div class="sub">Herramientas Educativas</div>
+              <div class="sub">${t('subtitle')}</div>
             </div>
           </div>
           <div class="hd-user">
+            <button class="btn-out" id="help-btn" style="background:transparent;color:#a7f3d0;border-color:#a7f3d0">${t('helpBtn')}</button>
+            <button class="btn-out" id="lang-btn" style="background:transparent;color:#a7f3d0;border-color:#a7f3d0">${t('langBtn')}</button>
             <div class="avatar">${initials}</div>
             <span class="hd-uname">${fullName}</span>
-            <button class="btn-out" id="logout-btn">Salir</button>
+            <button class="btn-out" id="logout-btn">${t('logout')}</button>
           </div>
         </div>
       </div>
 
       <div class="dash-body">
         <div class="dash-greeting">
-          <h2>¡Hola, ${firstName}!</h2>
-          <p>Elige tu herramienta para comenzar a practicar</p>
+          <h2>${t('greeting')(firstName)}</h2>
+          <p>${t('greetingSub')}</p>
         </div>
 
         ${renderXpPanel(gami)}
         ${renderDailyCard(gami)}
 
         <div class="tool-grid">
-          <div class="tool-card">
-            <div class="tool-icon rhythm">🥁</div>
-            <span class="tool-badge rhythm">Práctica</span>
-            <div class="tool-name">Lectura de Ritmo</div>
-            <div class="tool-desc">Genera ejercicios de lectura rítmica a primera vista con retroalimentación de audio instantánea.</div>
-            <div class="tool-meta">
-              <span>⏱ ${st ? fmtDuration(st.total_seconds) : '—'}</span>
-              <span>📅 ${st ? timeAgo(st.last_used) : 'Nunca'}</span>
-              <span>🎯 ${st ? st.sessions : 0} ses.</span>
-            </div>
-            <button class="btn-open rhythm open-tool" data-tool="studio">Abrir →</button>
-          </div>
-
-          <div class="tool-card">
-            <div class="tool-icon notes">🎼</div>
-            <span class="tool-badge notes">Teoría</span>
-            <div class="tool-name">Lectura de Notas</div>
-            <div class="tool-desc">Lectura musical a primera vista con teoría, entrenamiento auditivo y ejercicios progresivos.</div>
-            <div class="tool-meta">
-              <span>⏱ ${ac ? fmtDuration(ac.total_seconds) : '—'}</span>
-              <span>📅 ${ac ? timeAgo(ac.last_used) : 'Nunca'}</span>
-              <span>🎯 ${ac ? ac.sessions : 0} ses.</span>
-            </div>
-            <button class="btn-open notes open-tool" data-tool="academia">Abrir →</button>
-          </div>
-
-          <div class="tool-card">
-            <div class="tool-icon intervals">🎧</div>
-            <span class="tool-badge intervals">Oído</span>
-            <div class="tool-name">Intervalos</div>
-            <div class="tool-desc">Entrena tu oído identificando intervalos musicales: desde el unísono hasta la octava.</div>
-            <div class="tool-meta">
-              <span>⏱ ${iv ? fmtDuration(iv.total_seconds) : '—'}</span>
-              <span>🎯 ${ia.total > 0 ? `${ivAcc}% prec.` : 'Sin datos'}</span>
-              <span>📝 ${ia.total} intentos</span>
-            </div>
-            <button class="btn-open intervals open-tool" data-tool="intervaltrainer">Abrir →</button>
-          </div>
-
-          <div class="tool-card">
-            <div class="tool-icon rhythm" style="background:#fef3c7;border-color:#fde68a">🥁</div>
-            <span class="tool-badge rhythm" style="background:#fef3c7;color:#92400e;border-color:#fde68a">Ritmo</span>
-            <div class="tool-name">Dictado Rítmico</div>
-            <div class="tool-desc">Escucha patrones rítmicos y reprodúcelos. Entrena tu oído rítmico con compases de 2/4, 3/4 y 4/4.</div>
-            <div class="tool-meta">
-              <span>⏱ ${rt ? fmtDuration(rt.total_seconds) : '—'}</span>
-              <span>📅 ${rt ? timeAgo(rt.last_used) : 'Nunca'}</span>
-              <span>🎯 ${rt ? rt.sessions : 0} ses.</span>
-            </div>
-            <button class="btn-open rhythm open-tool" data-tool="rhythmtrainer" style="background:#d97706">Abrir →</button>
-          </div>
+          ${['studio','academia','intervaltrainer','rhythmtrainer'].map(tool => {
+            const ti = t('tools')[tool];
+            const icoMap   = { studio:'🥁', academia:'🎼', intervaltrainer:'🎧', rhythmtrainer:'🥁' };
+            const clsMap   = { studio:'rhythm', academia:'notes', intervaltrainer:'intervals', rhythmtrainer:'rhythm' };
+            const goldStyle = tool === 'rhythmtrainer' ? 'style="background:#fef3c7;border-color:#fde68a"' : '';
+            const badgeGold = tool === 'rhythmtrainer' ? 'style="background:#fef3c7;color:#92400e;border-color:#fde68a"' : '';
+            const openStyle = tool === 'rhythmtrainer' ? 'style="background:#d97706"' : '';
+            const statsHtml = tool === 'intervaltrainer'
+              ? `<span>⏱ ${iv ? fmtDuration(iv.total_seconds) : '—'}</span>
+                 <span>🎯 ${ia.total > 0 ? `${ivAcc}%` : t('noData')}</span>
+                 <span>📝 ${ia.total} ${t('attempts')}</span>`
+              : (() => {
+                  const s = { studio: st, academia: ac, rhythmtrainer: rt }[tool];
+                  return `<span>⏱ ${s ? fmtDuration(s.total_seconds) : '—'}</span>
+                          <span>📅 ${s ? timeAgo(s.last_used) : t('never')}</span>
+                          <span>🎯 ${s ? s.sessions : 0} ${t('sessions')}</span>`;
+                })();
+            return `
+              <div class="tool-card">
+                <div class="tool-icon ${clsMap[tool]}" ${goldStyle}>${icoMap[tool]}</div>
+                <span class="tool-badge ${clsMap[tool]}" ${badgeGold}>${ti.badge}</span>
+                <div class="tool-name">${ti.name}</div>
+                <div class="tool-desc">${ti.desc}</div>
+                <div class="tool-meta">${statsHtml}</div>
+                <button class="btn-open ${clsMap[tool]} open-tool" data-tool="${tool}" ${openStyle}>${t('open')}</button>
+              </div>`;
+          }).join('')}
         </div>
       </div>
     </div>`;
 
   document.getElementById('logout-btn').addEventListener('click', doLogout);
+  document.getElementById('lang-btn').addEventListener('click', () => {
+    S.lang = S.lang === 'es' ? 'en' : 'es';
+    loadDashboard();
+  });
+  document.getElementById('help-btn').addEventListener('click', showHelp);
   document.querySelectorAll('.open-tool').forEach(btn => {
     btn.addEventListener('click', () => openTool(btn.dataset.tool));
   });
+}
+
+// ── Ayuda / Help ────────────────────────────────────────────────────────────
+function showHelp() {
+  const h = T[S.lang].help;
+  const tools = T[S.lang].tools;
+  const toolIcons = { studio:'🥁', academia:'🎼', intervaltrainer:'🎧', rhythmtrainer:'🥁' };
+  appEl.innerHTML = `
+    <div id="view-help" style="max-width:680px;margin:0 auto;padding:24px 16px 48px;font-family:inherit">
+      <button id="help-back" style="background:none;border:1px solid #d1d5db;border-radius:8px;padding:6px 14px;font-size:.875rem;font-weight:600;color:#6b7280;cursor:pointer;margin-bottom:24px">${h.close}</button>
+      <h1 style="font-size:1.75rem;font-weight:800;color:#111827;margin-bottom:8px">${h.title}</h1>
+      <p style="color:#6b7280;margin-bottom:32px;line-height:1.7">${h.intro}</p>
+
+      <h2 style="font-size:1.125rem;font-weight:700;color:#111827;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e5e7eb">${h.toolsH}</h2>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px">
+        ${Object.entries(tools).map(([key, tool]) => `
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;gap:14px;align-items:flex-start">
+            <span style="font-size:2rem;flex-shrink:0">${toolIcons[key]}</span>
+            <div>
+              <div style="font-weight:700;color:#111827;margin-bottom:4px">${tool.name}</div>
+              <div style="font-size:.875rem;color:#6b7280;line-height:1.6">${tool.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:700;color:#111827;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb">${h.xpH}</h2>
+      <p style="color:#6b7280;line-height:1.7;margin-bottom:32px">${h.xpText}</p>
+
+      <h2 style="font-size:1.125rem;font-weight:700;color:#111827;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb">${h.dcH}</h2>
+      <p style="color:#6b7280;line-height:1.7;margin-bottom:32px">${h.dcText}</p>
+
+      <h2 style="font-size:1.125rem;font-weight:700;color:#111827;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e5e7eb">${h.faqH}</h2>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${h.faq.map(([q, a]) => `
+          <details style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px">
+            <summary style="font-weight:700;color:#111827;cursor:pointer;list-style:none;display:flex;justify-content:space-between">
+              ${q} <span style="color:#9ca3af">﹢</span>
+            </summary>
+            <p style="margin-top:10px;color:#6b7280;line-height:1.6;font-size:.9rem">${a}</p>
+          </details>`).join('')}
+      </div>
+    </div>`;
+
+  document.getElementById('help-back').addEventListener('click', loadDashboard);
 }
 
 // ── Abrir herramienta ──────────────────────────────────────────────────────
@@ -509,23 +628,18 @@ async function openTool(tool) {
 
 function showToolView(tool) {
   S.view = 'tool';
-  const labels = {
-    studio: '🥁 Lectura de Ritmo', academia: '🎼 Lectura de Notas',
-    intervaltrainer: '🎧 Entrenador de Intervalos',
-    rhythmtrainer: '🥁 Dictado Rítmico',
-  };
-  const label = labels[tool] ?? tool;
+  const label = t('toolLabels')[tool] ?? tool;
   const src   = `tools/sonitus-${tool}.html?tsid=${S.toolSessionId}`;
 
   appEl.innerHTML = `
     <div id="view-tool">
       <div class="tool-hd">
         <div class="tool-hd-left">
-          <button class="btn-back" id="back-btn">← Volver</button>
+          <button class="btn-back" id="back-btn">${t('back')}</button>
           <span class="tool-hd-name">${label}</span>
         </div>
         <div class="tool-hd-right">
-          <span style="font-size:.75rem;opacity:.7;">Tiempo:</span>
+          <span style="font-size:.75rem;opacity:.7;">${t('time')}</span>
           <span class="tool-timer" id="tool-timer">00:00:00</span>
         </div>
       </div>
