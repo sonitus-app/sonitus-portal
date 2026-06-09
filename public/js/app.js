@@ -721,15 +721,21 @@ window.addEventListener('message', async e => {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async fbUser => {
-  if (fbUser) {
-    const userData = await getUserData(fbUser.uid);
-    if (!userData) { await signOut(auth); showLogin(); return; }
-    S.user = { id: fbUser.uid, username: userData.username, fullName: userData.fullName, role: userData.role };
-    S.firestoreUser = userData;
-    if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
-    loadDashboard();
-  } else {
-    showLogin();
+  try {
+    if (fbUser) {
+      const userData = await getUserData(fbUser.uid);
+      if (!userData) { await signOut(auth); showLogin(); return; }
+      S.user = { id: fbUser.uid, username: userData.username, fullName: userData.fullName, role: userData.role };
+      S.firestoreUser = userData;
+      if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
+      loadDashboard();
+    } else {
+      showLogin();
+    }
+  } catch (err) {
+    console.error('Auth init error:', err);
+    showLogin('Error de conexión. Por favor recarga la página.');
+  } finally {
+    window.hideSplash?.();
   }
-  window.hideSplash?.();
 });
