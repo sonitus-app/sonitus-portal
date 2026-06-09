@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sonitus-v5';
+const CACHE_NAME = 'sonitus-v6';
 
 const PRECACHE_URLS = [
   '/',

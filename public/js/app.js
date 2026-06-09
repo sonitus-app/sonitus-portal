@@ -75,6 +75,26 @@ const T = {
     streakDays:   n => `😊 ${n} días`,
     back:         '← Volver',
     time:         'Tiempo:',
+    loginSubtitle:  'Herramientas Educativas de Música',
+    loginUser:      'Usuario', loginUserPh:  'tu nombre de usuario',
+    loginPass:      'Contraseña', loginPassPh: '••••••',
+    loginBtn:       'Iniciar Sesión',
+    loginNoAcc:     '¿Sin cuenta?', loginRegLink: 'Regístrate aquí',
+    loginErrEmpty:  'Por favor completa todos los campos.',
+    loginErrCred:   'Usuario o contraseña incorrectos',
+    loginErrGen:    'Error al iniciar sesión. Intenta de nuevo.',
+    regSubtitle:    'Crear cuenta de alumno',
+    regName:        'Nombre completo', regNamePh: 'Tu nombre',
+    regUser:        'Usuario', regUserPh: 'sin espacios, ej: juan123',
+    regPass:        'Contraseña', regPassPh: 'Mínimo 6 caracteres',
+    regBtn:         'Crear Cuenta',
+    regHasAcc:      '¿Ya tienes cuenta?', regLoginLink: 'Inicia sesión',
+    regErrEmpty:    'Por favor completa todos los campos.',
+    regErrShort:    'La contraseña debe tener mínimo 6 caracteres.',
+    regErrReserved: 'Ese nombre de usuario está reservado.',
+    regErrExists:   'Ese nombre de usuario ya está en uso.',
+    regErrGen:      'Error al crear la cuenta. Intenta de nuevo.',
+    regSuccess:     '¡Cuenta creada! Ahora puedes iniciar sesión.',
     tools: {
       studio:          { name: 'Lectura de Ritmo',   badge: 'Práctica', desc: 'Genera ejercicios de lectura rítmica a primera vista con retroalimentación de audio instantánea.' },
       academia:        { name: 'Lectura de Notas',   badge: 'Teoría',   desc: 'Lectura musical a primera vista con teoría, entrenamiento auditivo y ejercicios progresivos.' },
@@ -118,6 +138,26 @@ const T = {
     streakDays:   n => `😊 ${n} days`,
     back:         '← Back',
     time:         'Time:',
+    loginSubtitle:  'Music Education Tools',
+    loginUser:      'Username', loginUserPh:  'your username',
+    loginPass:      'Password', loginPassPh:  '••••••',
+    loginBtn:       'Log In',
+    loginNoAcc:     "Don't have an account?", loginRegLink: 'Sign up',
+    loginErrEmpty:  'Please fill in all fields.',
+    loginErrCred:   'Invalid username or password',
+    loginErrGen:    'Login error. Please try again.',
+    regSubtitle:    'Create student account',
+    regName:        'Full name', regNamePh: 'Your name',
+    regUser:        'Username', regUserPh: 'no spaces, e.g. juan123',
+    regPass:        'Password', regPassPh: 'At least 6 characters',
+    regBtn:         'Create Account',
+    regHasAcc:      'Already have an account?', regLoginLink: 'Log in',
+    regErrEmpty:    'Please fill in all fields.',
+    regErrShort:    'Password must be at least 6 characters.',
+    regErrReserved: 'That username is reserved.',
+    regErrExists:   'That username is already taken.',
+    regErrGen:      'Error creating account. Please try again.',
+    regSuccess:     'Account created! You can now log in.',
     tools: {
       studio:          { name: 'Rhythm Reading',     badge: 'Practice', desc: 'Generate sight-reading rhythm exercises with instant audio feedback.' },
       academia:        { name: 'Note Reading',       badge: 'Theory',   desc: 'Musical sight-reading with theory, ear training, and progressive exercises.' },
@@ -289,25 +329,25 @@ function showLogin(msg = '', isSuccess = false) {
       <div class="login-box">
         <div class="login-logo"><img src="logo.jpeg" style="width:42px;height:42px;object-fit:contain;filter:invert(1) brightness(2);" alt="Sonitus" /></div>
         <h1 class="login-title">Sonitus Portal</h1>
-        <p class="login-subtitle">Herramientas Educativas de Música</p>
+        <p class="login-subtitle">${t('loginSubtitle')}</p>
 
         ${msg ? `<div class="alert ${isSuccess ? 'alert-ok' : 'alert-err'}">${msg}</div>` : ''}
 
         <form id="login-form" style="display:flex;flex-direction:column;gap:14px;">
           <div class="f-group">
-            <label class="f-label">Usuario</label>
-            <input id="f-user" type="text" class="f-input" placeholder="tu nombre de usuario" autocomplete="username" />
+            <label class="f-label">${t('loginUser')}</label>
+            <input id="f-user" type="text" class="f-input" placeholder="${t('loginUserPh')}" autocomplete="username" />
           </div>
           <div class="f-group">
-            <label class="f-label">Contraseña</label>
-            <input id="f-pass" type="password" class="f-input" placeholder="••••••" autocomplete="current-password" />
+            <label class="f-label">${t('loginPass')}</label>
+            <input id="f-pass" type="password" class="f-input" placeholder="${t('loginPassPh')}" autocomplete="current-password" />
           </div>
-          <button type="submit" class="btn btn-blue btn-full" style="margin-top:4px;">Iniciar Sesión</button>
+          <button type="submit" class="btn btn-blue btn-full" style="margin-top:4px;">${t('loginBtn')}</button>
         </form>
 
         <p style="text-align:center;color:var(--g400);font-size:.875rem;margin-top:20px;">
-          ¿Sin cuenta?
-          <a href="#" id="go-reg" style="color:var(--blue);font-weight:600;text-decoration:none;">Regístrate aquí</a>
+          ${t('loginNoAcc')}
+          <a href="#" id="go-reg" style="color:var(--blue);font-weight:600;text-decoration:none;">${t('loginRegLink')}</a>
         </p>
       </div>
     </div>`;
@@ -322,7 +362,7 @@ function showLogin(msg = '', isSuccess = false) {
     e.preventDefault();
     const username = document.getElementById('f-user').value.trim().toLowerCase();
     const password = document.getElementById('f-pass').value;
-    if (!username || !password) return showLogin('Por favor completa todos los campos.');
+    if (!username || !password) return showLogin(t('loginErrEmpty'));
     try {
       const cred = await signInWithEmailAndPassword(auth, `${username}@sonitus.portal`, password);
       const userData = await getUserData(cred.user.uid);
@@ -331,10 +371,10 @@ function showLogin(msg = '', isSuccess = false) {
       if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
       loadDashboard();
     } catch (err) {
-      const msg = err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found'
-        ? 'Usuario o contraseña incorrectos'
-        : 'Error al iniciar sesión. Intenta de nuevo.';
-      showLogin(msg);
+      const errMsg = err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found'
+        ? t('loginErrCred')
+        : t('loginErrGen');
+      showLogin(errMsg);
     }
   });
   document.getElementById('go-reg').addEventListener('click', e => { e.preventDefault(); showRegister(); });
@@ -352,29 +392,29 @@ function showRegister(msg = '') {
       <div class="login-box">
         <div class="login-logo"><img src="logo.jpeg" style="width:42px;height:42px;object-fit:contain;filter:invert(1) brightness(2);" alt="Sonitus" /></div>
         <h1 class="login-title">Sonitus Portal</h1>
-        <p class="login-subtitle">Crear cuenta de alumno</p>
+        <p class="login-subtitle">${t('regSubtitle')}</p>
 
         ${msg ? `<div class="alert alert-err">${msg}</div>` : ''}
 
         <form id="reg-form" style="display:flex;flex-direction:column;gap:14px;">
           <div class="f-group">
-            <label class="f-label">Nombre completo</label>
-            <input id="r-name" type="text" class="f-input" placeholder="Tu nombre" autocomplete="name" />
+            <label class="f-label">${t('regName')}</label>
+            <input id="r-name" type="text" class="f-input" placeholder="${t('regNamePh')}" autocomplete="name" />
           </div>
           <div class="f-group">
-            <label class="f-label">Usuario</label>
-            <input id="r-user" type="text" class="f-input" placeholder="sin espacios, ej: juan123" autocomplete="username" />
+            <label class="f-label">${t('regUser')}</label>
+            <input id="r-user" type="text" class="f-input" placeholder="${t('regUserPh')}" autocomplete="username" />
           </div>
           <div class="f-group">
-            <label class="f-label">Contraseña</label>
-            <input id="r-pass" type="password" class="f-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+            <label class="f-label">${t('regPass')}</label>
+            <input id="r-pass" type="password" class="f-input" placeholder="${t('regPassPh')}" autocomplete="new-password" />
           </div>
-          <button type="submit" class="btn btn-blue btn-full" style="margin-top:4px;">Crear Cuenta</button>
+          <button type="submit" class="btn btn-blue btn-full" style="margin-top:4px;">${t('regBtn')}</button>
         </form>
 
         <p style="text-align:center;color:var(--g400);font-size:.875rem;margin-top:20px;">
-          ¿Ya tienes cuenta?
-          <a href="#" id="go-login" style="color:var(--blue);font-weight:600;text-decoration:none;">Inicia sesión</a>
+          ${t('regHasAcc')}
+          <a href="#" id="go-login" style="color:var(--blue);font-weight:600;text-decoration:none;">${t('regLoginLink')}</a>
         </p>
       </div>
     </div>`;
@@ -390,9 +430,9 @@ function showRegister(msg = '') {
     const fullName = document.getElementById('r-name').value.trim();
     const username = document.getElementById('r-user').value.trim().toLowerCase();
     const password = document.getElementById('r-pass').value;
-    if (!fullName || !username || !password) return showRegister('Por favor completa todos los campos.');
-    if (password.length < 6) return showRegister('La contraseña debe tener mínimo 6 caracteres.');
-    if (username === 'profesor') return showRegister('Ese nombre de usuario está reservado.');
+    if (!fullName || !username || !password) return showRegister(t('regErrEmpty'));
+    if (password.length < 6) return showRegister(t('regErrShort'));
+    if (username === 'profesor') return showRegister(t('regErrReserved'));
 
     try {
       const cred = await createUserWithEmailAndPassword(auth, `${username}@sonitus.portal`, password);
@@ -402,12 +442,12 @@ function showRegister(msg = '') {
         createdAt: serverTimestamp(), lastActivity: serverTimestamp(),
       });
       await signOut(auth);
-      showLogin('¡Cuenta creada! Ahora puedes iniciar sesión.', true);
+      showLogin(t('regSuccess'), true);
     } catch (err) {
-      const msg = err.code === 'auth/email-already-in-use'
-        ? 'Ese nombre de usuario ya está en uso.'
-        : 'Error al crear la cuenta. Intenta de nuevo.';
-      showRegister(msg);
+      const errMsg = err.code === 'auth/email-already-in-use'
+        ? t('regErrExists')
+        : t('regErrGen');
+      showRegister(errMsg);
     }
   });
   document.getElementById('go-login').addEventListener('click', e => { e.preventDefault(); showLogin(); });
@@ -416,6 +456,7 @@ function showRegister(msg = '') {
 // ── Dashboard ──────────────────────────────────────────────────────────────
 async function loadDashboard() {
   showLoading();
+  try {
   const uid = S.user.id;
 
   const [sessSnap, attSnap, achSnap] = await Promise.all([
@@ -459,6 +500,10 @@ async function loadDashboard() {
   };
   const gami = { level: levelInfo, badges, streak, dailyChallenge: challenge };
   showDashboard(stats, gami);
+  } catch (err) {
+    console.error('Dashboard error:', err);
+    showLogin(t('loginErrGen'));
+  }
 }
 
 function renderXpPanel(gami) {
