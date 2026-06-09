@@ -281,7 +281,11 @@ function showLoading() {
 function showLogin(msg = '', isSuccess = false) {
   S.view = 'login';
   appEl.innerHTML = `
-    <div id="view-login">
+    <div id="view-login" style="position:relative;">
+      <div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;z-index:10;">
+        <button id="help-btn-guest" class="btn-out" style="background:rgba(16,185,129,.1);color:#065f46;border-color:#a7f3d0;font-size:.8125rem;">${t('helpBtn')}</button>
+        <button id="lang-btn-guest" class="btn-out" style="background:rgba(16,185,129,.1);color:#065f46;border-color:#a7f3d0;font-size:.8125rem;">${t('langBtn')}</button>
+      </div>
       <div class="login-box">
         <div class="login-logo"><img src="logo.jpeg" style="width:42px;height:42px;object-fit:contain;filter:invert(1) brightness(2);" alt="Sonitus" /></div>
         <h1 class="login-title">Sonitus Portal</h1>
@@ -308,6 +312,11 @@ function showLogin(msg = '', isSuccess = false) {
       </div>
     </div>`;
 
+  document.getElementById('help-btn-guest').addEventListener('click', showHelp);
+  document.getElementById('lang-btn-guest').addEventListener('click', () => {
+    S.lang = S.lang === 'es' ? 'en' : 'es';
+    showLogin(msg, isSuccess);
+  });
   document.getElementById('f-user').focus();
   document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -335,7 +344,11 @@ function showLogin(msg = '', isSuccess = false) {
 function showRegister(msg = '') {
   S.view = 'register';
   appEl.innerHTML = `
-    <div id="view-register">
+    <div id="view-register" style="position:relative;">
+      <div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;z-index:10;">
+        <button id="help-btn-guest" class="btn-out" style="background:rgba(16,185,129,.1);color:#065f46;border-color:#a7f3d0;font-size:.8125rem;">${t('helpBtn')}</button>
+        <button id="lang-btn-guest" class="btn-out" style="background:rgba(16,185,129,.1);color:#065f46;border-color:#a7f3d0;font-size:.8125rem;">${t('langBtn')}</button>
+      </div>
       <div class="login-box">
         <div class="login-logo"><img src="logo.jpeg" style="width:42px;height:42px;object-fit:contain;filter:invert(1) brightness(2);" alt="Sonitus" /></div>
         <h1 class="login-title">Sonitus Portal</h1>
@@ -366,6 +379,11 @@ function showRegister(msg = '') {
       </div>
     </div>`;
 
+  document.getElementById('help-btn-guest').addEventListener('click', showHelp);
+  document.getElementById('lang-btn-guest').addEventListener('click', () => {
+    S.lang = S.lang === 'es' ? 'en' : 'es';
+    showRegister(msg);
+  });
   document.getElementById('r-name').focus();
   document.getElementById('reg-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -611,7 +629,9 @@ function showHelp() {
       </div>
     </div>`;
 
-  document.getElementById('help-back').addEventListener('click', loadDashboard);
+  document.getElementById('help-back').addEventListener('click', () => {
+    S.user ? loadDashboard() : showLogin();
+  });
 }
 
 // ── Abrir herramienta ──────────────────────────────────────────────────────
