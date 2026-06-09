@@ -371,9 +371,11 @@ function showLogin(msg = '', isSuccess = false) {
       if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
       loadDashboard();
     } catch (err) {
-      const errMsg = err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found'
+      console.error('Login error:', err.code, err.message);
+      const credErrors = ['auth/invalid-credential','auth/user-not-found','auth/wrong-password','auth/invalid-email'];
+      const errMsg = credErrors.includes(err.code)
         ? t('loginErrCred')
-        : t('loginErrGen');
+        : `${t('loginErrGen')} (${err.code})`;
       showLogin(errMsg);
     }
   });
