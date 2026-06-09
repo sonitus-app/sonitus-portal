@@ -1,10 +1,6 @@
-const CACHE_NAME = 'sonitus-v6';
+const CACHE_NAME = 'sonitus-v7';
 
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/js/app.js',
-  '/js/admin.js',
   '/logo.jpeg',
   '/manifest.json',
   '/icons/icon-192.svg',
@@ -46,22 +42,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for everything else
+  // Network-first for HTML and JS (always fresh code)
+  const isHtmlOrJs = url.pathname.endsWith('.html') || url.pathname === '/'
+    || url.pathname.endsWith('.js') || url.search.includes('v=');
+
+  if (isHtmlOrJs) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (images, fonts, etc.)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
-
       return fetch(request).then((response) => {
-        // Only cache valid GET responses
-        if (
-          !response ||
-          response.status !== 200 ||
-          response.type === 'opaque' ||
-          request.method !== 'GET'
-        ) {
+        if (!response || response.status !== 200 || response.type === 'opaque' || request.method !== 'GET') {
           return response;
         }
-
         const cloned = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
         return response;
