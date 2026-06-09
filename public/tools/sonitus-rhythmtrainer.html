@@ -368,30 +368,53 @@ function getCtx() {
   return _ctx;
 }
 
-function playClick(t, isAccent, isRest) {
-  const ctx = getCtx();
-  const freq = isAccent ? 880 : 660;
-  const gain = isRest ? 0.08 : (isAccent ? 0.55 : 0.35);
-  const osc  = ctx.createOscillator();
-  const env  = ctx.createGain();
-  osc.connect(env); env.connect(ctx.destination);
-  osc.type = isRest ? 'sine' : 'square';
-  osc.frequency.value = freq;
-  env.gain.setValueAtTime(gain, t);
-  env.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-  osc.start(t); osc.stop(t + 0.05);
+function pianoNote(ctx, freq, t, gain, ringTime) {
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.value = Math.min(freq * 11, 8500);
+  filt.Q.value = 0.4;
+  filt.connect(ctx.destination);
+
+  const master = ctx.createGain();
+  master.connect(filt);
+  master.gain.setValueAtTime(0, t);
+  master.gain.linearRampToValueAtTime(gain, t + 0.003);
+  master.gain.exponentialRampToValueAtTime(0.001, t + ringTime);
+
+  const B = 0.00014;
+  [[1, 1.0], [2, 0.35], [3, 0.14], [4, 0.06], [5, 0.025]].forEach(([n, amp]) => {
+    const f = n * freq * Math.sqrt(1 + B * n * n);
+    [-4, 0, 4].forEach(cents => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      osc.detune.value = cents;
+      g.gain.value = amp / 3;
+      osc.connect(g); g.connect(master);
+      osc.start(t); osc.stop(t + ringTime + 0.05);
+    });
+  });
 }
 
-// Play a metronome tick (softer, higher)
+function playClick(t, isAccent, isRest) {
+  if (isRest) return;
+  // Accent = C5 (523Hz), regular beat = G4 (392Hz)
+  const freq = isAccent ? 523.25 : 392.00;
+  const gain = isAccent ? 0.62 : 0.40;
+  const ring = isAccent ? 0.30 : 0.20;
+  pianoNote(getCtx(), freq, t, gain, ring);
+}
+
+// Metronome count-in: soft woodblock click
 function playTick(t) {
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
   osc.connect(env); env.connect(ctx.destination);
-  osc.type = 'triangle'; osc.frequency.value = 1200;
-  env.gain.setValueAtTime(0.12, t);
-  env.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
-  osc.start(t); osc.stop(t + 0.02);
+  osc.type = 'triangle'; osc.frequency.value = 1800;
+  env.gain.setValueAtTime(0.07, t);
+  env.gain.exponentialRampToValueAtTime(0.001, t + 0.018);
+  osc.start(t); osc.stop(t + 0.022);
 }
 
 let _playStop = null;

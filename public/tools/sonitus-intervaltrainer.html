@@ -476,21 +476,37 @@ function getCtx() {
 }
 function midiToHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 function tone(ctx, freq, t0, dur) {
+  // Natural piano decay: note rings freely past nominal duration
+  const ring = Math.max(dur * 2.2, 1.2);
+
+  // Warm low-pass filter — cuts harshness from high partials
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.value = Math.min(freq * 11, 8500);
+  filt.Q.value = 0.4;
+  filt.connect(ctx.destination);
+
+  // Master envelope — fast hammer attack, smooth exponential decay
   const master = ctx.createGain();
-  master.connect(ctx.destination);
+  master.connect(filt);
   master.gain.setValueAtTime(0, t0);
-  master.gain.linearRampToValueAtTime(0.38, t0 + 0.008);
-  master.gain.exponentialRampToValueAtTime(0.16, t0 + 0.12);
-  master.gain.setValueAtTime(0.11, t0 + Math.max(dur - 0.18, 0.05));
-  master.gain.linearRampToValueAtTime(0, t0 + dur);
-  // Fundamental + harmonics para timbre de piano
-  [[1, 0.60], [2, 0.22], [3, 0.09], [4, 0.05], [6, 0.03]].forEach(([mult, vol]) => {
-    const osc = ctx.createOscillator(), g = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq * mult;
-    g.gain.value = vol;
-    osc.connect(g); g.connect(master);
-    osc.start(t0); osc.stop(t0 + dur);
+  master.gain.linearRampToValueAtTime(0.48, t0 + 0.003);
+  master.gain.exponentialRampToValueAtTime(0.001, t0 + ring);
+
+  // Harmonics with inharmonicity (piano strings are slightly stiff: f_n ≈ n·f·√(1+B·n²))
+  // 3 oscillators per partial, detuned ±4 cents — simulates piano's 3-string chorus
+  const B = 0.00014;
+  [[1, 1.00], [2, 0.38], [3, 0.16], [4, 0.08], [5, 0.04], [6, 0.018], [7, 0.008]].forEach(([n, amp]) => {
+    const f = n * freq * Math.sqrt(1 + B * n * n);
+    [-4, 0, 4].forEach(cents => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      osc.detune.value = cents;
+      g.gain.value = amp / 3;
+      osc.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + ring + 0.05);
+    });
   });
 }
 function scheduleInterval(st, pm) {
