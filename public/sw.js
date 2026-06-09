@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sonitus-v7';
+const CACHE_NAME = 'sonitus-v9';
 
 const PRECACHE_URLS = [
   '/logo.jpeg',

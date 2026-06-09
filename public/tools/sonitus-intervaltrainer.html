@@ -291,21 +291,151 @@
   <div id="root" style="flex:1;display:flex;flex-direction:column;"></div>
 
 <script>
-// ── Datos ────────────────────────────────────────────────────────────────────
-const INTERVALS = [
-  { name:'Unísono',  st:0  }, { name:'2ª menor', st:1  }, { name:'2ª mayor', st:2  },
-  { name:'3ª menor', st:3  }, { name:'3ª mayor', st:4  }, { name:'4ª justa', st:5  },
-  { name:'Tritono',  st:6  }, { name:'5ª justa', st:7  }, { name:'6ª menor', st:8  },
-  { name:'6ª mayor', st:9  }, { name:'7ª menor', st:10 }, { name:'7ª mayor', st:11 },
-  { name:'Octava',   st:12 },
-];
-const LEVELS = {
-  easy:   { label:'Fácil',   emoji:'🌱', sts:[0,5,7,12],              desc:'Los 4 intervalos más reconocibles' },
-  medium: { label:'Medio',   emoji:'🎯', sts:[0,3,4,5,7,9,12],       desc:'Añade terceras y 6ª mayor' },
-  hard:   { label:'Difícil', emoji:'🧠', sts:[0,1,2,3,4,5,6,7,8,9,10,11,12], desc:'Los 13 intervalos completos' },
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const lang = new URLSearchParams(location.search).get('lang') || 'es';
+const T = {
+  es: {
+    intervals:[
+      {name:'Unísono',st:0},{name:'2ª menor',st:1},{name:'2ª mayor',st:2},
+      {name:'3ª menor',st:3},{name:'3ª mayor',st:4},{name:'4ª justa',st:5},
+      {name:'Tritono',st:6},{name:'5ª justa',st:7},{name:'6ª menor',st:8},
+      {name:'6ª mayor',st:9},{name:'7ª menor',st:10},{name:'7ª mayor',st:11},
+      {name:'Octava',st:12},
+    ],
+    levels:{
+      easy:  {label:'Fácil',  emoji:'🌱',sts:[0,5,7,12],             desc:'Los 4 intervalos más reconocibles'},
+      medium:{label:'Medio',  emoji:'🎯',sts:[0,3,4,5,7,9,12],      desc:'Añade terceras y 6ª mayor'},
+      hard:  {label:'Difícil',emoji:'🧠',sts:[0,1,2,3,4,5,6,7,8,9,10,11,12],desc:'Los 13 intervalos completos'},
+    },
+    modeLabel:{ascending:'↗ Ascendente',descending:'↘ Descendente',harmonic:'≡ Armónico'},
+    stepSol:['Do','Re','Mi','Fa','Sol','La','Si','Do'],
+    ivChars:[
+      'La misma nota repetida. Unidad perfecta.',
+      'Paso cromático. Máxima tensión de 2.ª.',
+      'Paso natural de la escala mayor.',
+      'Color triste y melancólico.',
+      'Color alegre y brillante.',
+      'Salto limpio y estable.',
+      'Máxima tensión. Diabolus in musica.',
+      'Poder y estabilidad. El intervalo del rock.',
+      'Nostalgia, dulzura melancólica.',
+      'Amplitud y apertura. Muy cantabile.',
+      'Tensión que busca resolverse.',
+      'Tensión intensa, casi resuelta.',
+      'Regreso al origen, una octava arriba.',
+    ],
+    ui:{
+      back:'← Menú',backBtn:'← Volver',brandName:'Sonitus Intervalos',
+      heroTitle:'Escucha el Intervalo.<br>Identifícalo.',
+      heroSub:'Entrena tu oído y tu lectura musical. Aprende los 13 intervalos con retroalimentación de audio instantánea.',
+      heroBtn:'▶ Empezar a Entrenar',
+      modeAudio:'Oído',modeAudioDesc:'Escucha el intervalo e identifica su nombre',
+      modeNotation:'Escritura',modeNotationDesc:'Lee las notas en el pentagrama e identifica el intervalo',
+      modeStudy:'Estudio',modeStudyDesc:'Ve los 13 intervalos en el pentagrama y escúchalos',
+      mode60:'60 Segundos',mode60Desc:'Identifica tantos intervalos como puedas antes de que acabe el tiempo',
+      modeProgress:'Mi Progreso',modeProgressDesc:'Ve tu precisión histórica por cada intervalo',
+      studyTitle:'📚 Estudio — 13 Intervalos',
+      progTitle:'📊 Mi Progreso',progLoading:'Cargando…',
+      progEmpty:'Sin intentos aún',progEmptySub:'Juega en modo Oído o Escritura para ver tu progreso aquí.',
+      progAttempts:'Intentos',progCorrect:'Correctos',progAccuracy:'Precisión global',progCorrectFrac:'correctas',
+      correct:'Correctas',total:'Total',accuracy:'Precisión',streak:'Racha',
+      bestStreak:'Mejor racha',maxStreak:'Racha máx.',xpEarned:'XP ganados',
+      playAgain:'▶ Jugar de nuevo',quit:'✕ Salir',mainMenu:'Menú principal',
+      retry:'Intentar de nuevo',upgradeTo:'Subir a',
+      dirLabel:'Dirección',dirRandom:'↕ Aleatoria',dirAsc:'↗ Ascendente',dirDesc:'↘ Descendente',dirHarm:'≡ Armónico',
+      accLabel:'Alteraciones',accAll:'Con ♭♯',accNatural:'Sin ♭♯ — solo naturales',
+      levelTitle:'Elige el nivel',levelSub:'Selecciona con cuántos intervalos quieres practicar',
+      playing:'Reproduciendo…',listenQ:'¿Qué intervalo escuchaste?',
+      notationQ:'¿Qué intervalo forman estas dos notas?',notationMode:'Identifica el intervalo',
+      game60Q:'¿Qué intervalo es este?',replayBtn:'🔊 Reproducir de nuevo',
+      listenHint:'Puedes escuchar las veces que quieras antes de responder',listenWait:'Escucha con atención…',
+      semitoneSg:'semitono',semitonesPl:'semitonos',wasInterval:'Era:',
+      correctMsgs:['¡Excelente!','¡Correcto!','¡Muy bien!','¡Perfecto!'],
+      gameOverTitle:'¡Se acabaron las vidas!',
+      gameOverSub:(n,t)=>`Llegaste a la pregunta ${n} de ${t}`,
+      roundExcellent:'¡Excelente ronda!',roundGood:'¡Buen trabajo!',roundPractice:'¡Sigue practicando!',
+      roundAccuracy:(p)=>`${p}% de precisión`,
+      upgradeHint:(label)=>`🎯 ¡Estás listo para subir! Prueba el nivel <strong>${label}</strong>.`,
+      g60Excellent:'¡Excelente oído!',g60Good:'¡Buen trabajo!',g60Practice:'¡Sigue practicando!',
+      studyAsc:'↗ Asc',studyDesc:'↘ Des',studyHarm:'≡ Arm',
+      modeAudioLabel:'Oído',modeNotationLabel:'Escritura',
+    },
+  },
+  en: {
+    intervals:[
+      {name:'Unison',st:0},{name:'Minor 2nd',st:1},{name:'Major 2nd',st:2},
+      {name:'Minor 3rd',st:3},{name:'Major 3rd',st:4},{name:'Perfect 4th',st:5},
+      {name:'Tritone',st:6},{name:'Perfect 5th',st:7},{name:'Minor 6th',st:8},
+      {name:'Major 6th',st:9},{name:'Minor 7th',st:10},{name:'Major 7th',st:11},
+      {name:'Octave',st:12},
+    ],
+    levels:{
+      easy:  {label:'Easy',  emoji:'🌱',sts:[0,5,7,12],             desc:'The 4 most recognizable intervals'},
+      medium:{label:'Medium',emoji:'🎯',sts:[0,3,4,5,7,9,12],      desc:'Adds thirds and major 6th'},
+      hard:  {label:'Hard',  emoji:'🧠',sts:[0,1,2,3,4,5,6,7,8,9,10,11,12],desc:'All 13 intervals'},
+    },
+    modeLabel:{ascending:'↗ Ascending',descending:'↘ Descending',harmonic:'≡ Harmonic'},
+    stepSol:['C','D','E','F','G','A','B','C'],
+    ivChars:[
+      'The same note repeated. Perfect unity.',
+      'Chromatic step. Maximum tension at a 2nd.',
+      'Natural step of the major scale.',
+      'Sad, melancholic color.',
+      'Bright, happy color.',
+      'Clean and stable leap.',
+      'Maximum tension. Diabolus in musica.',
+      'Power and stability. The rock interval.',
+      'Nostalgia, melancholic sweetness.',
+      'Breadth and openness. Very cantabile.',
+      'Tension seeking resolution.',
+      'Intense tension, almost resolved.',
+      'Return to the origin, one octave up.',
+    ],
+    ui:{
+      back:'← Menu',backBtn:'← Back',brandName:'Sonitus Intervals',
+      heroTitle:'Listen to the Interval.<br>Identify It.',
+      heroSub:'Train your ear and music reading. Learn all 13 intervals with instant audio feedback.',
+      heroBtn:'▶ Start Training',
+      modeAudio:'Ear',modeAudioDesc:'Listen to the interval and identify its name',
+      modeNotation:'Notation',modeNotationDesc:'Read the notes on the staff and identify the interval',
+      modeStudy:'Study',modeStudyDesc:'See all 13 intervals on the staff and listen to them',
+      mode60:'60 Seconds',mode60Desc:'Identify as many intervals as you can before time runs out',
+      modeProgress:'My Progress',modeProgressDesc:'See your historical accuracy for each interval',
+      studyTitle:'📚 Study — 13 Intervals',
+      progTitle:'📊 My Progress',progLoading:'Loading…',
+      progEmpty:'No attempts yet',progEmptySub:'Play in Ear or Notation mode to see your progress here.',
+      progAttempts:'Attempts',progCorrect:'Correct',progAccuracy:'Global accuracy',progCorrectFrac:'correct',
+      correct:'Correct',total:'Total',accuracy:'Accuracy',streak:'Streak',
+      bestStreak:'Best streak',maxStreak:'Max streak',xpEarned:'XP earned',
+      playAgain:'▶ Play again',quit:'✕ Quit',mainMenu:'Main menu',
+      retry:'Try again',upgradeTo:'Go to',
+      dirLabel:'Direction',dirRandom:'↕ Random',dirAsc:'↗ Ascending',dirDesc:'↘ Descending',dirHarm:'≡ Harmonic',
+      accLabel:'Accidentals',accAll:'With ♭♯',accNatural:'Without ♭♯ — naturals only',
+      levelTitle:'Choose level',levelSub:'Select how many intervals you want to practice',
+      playing:'Playing…',listenQ:'What interval did you hear?',
+      notationQ:'What interval do these two notes form?',notationMode:'Identify the interval',
+      game60Q:'What interval is this?',replayBtn:'🔊 Play again',
+      listenHint:'You can listen as many times as you want before answering',listenWait:'Listen carefully…',
+      semitoneSg:'semitone',semitonesPl:'semitones',wasInterval:'It was:',
+      correctMsgs:['Excellent!','Correct!','Well done!','Perfect!'],
+      gameOverTitle:'Lives are up!',
+      gameOverSub:(n,t)=>`You reached question ${n} of ${t}`,
+      roundExcellent:'Excellent round!',roundGood:'Good job!',roundPractice:'Keep practicing!',
+      roundAccuracy:(p)=>`${p}% accuracy`,
+      upgradeHint:(label)=>`🎯 Ready to level up! Try <strong>${label}</strong>.`,
+      g60Excellent:'Excellent ear!',g60Good:'Good job!',g60Practice:'Keep practicing!',
+      studyAsc:'↗ Asc',studyDesc:'↘ Desc',studyHarm:'≡ Harm',
+      modeAudioLabel:'Ear',modeNotationLabel:'Notation',
+    },
+  },
 };
-const PLAY_MODES  = ['ascending','descending','harmonic'];
-const MODE_LABEL  = { ascending:'↗ Ascendente', descending:'↘ Descendente', harmonic:'≡ Armónico' };
+const L         = T[lang].ui;
+
+// ── Datos ────────────────────────────────────────────────────────────────────
+const INTERVALS  = T[lang].intervals;
+const LEVELS     = T[lang].levels;
+const PLAY_MODES = ['ascending','descending','harmonic'];
+const MODE_LABEL = T[lang].modeLabel;
 
 // Staff notation: semitone → diatonic step from C4 + accidental
 // Staff: line1(E4)=y90, line2(G4)=y78, line3(B4)=y66, line4(D5)=y54, line5(F5)=y42 (sp=12)
@@ -326,7 +456,7 @@ const INOTE = [
   { step:7, acc:'' },   // 12 Octava   – C5
 ];
 const STEP_Y   = [102, 96, 90, 84, 78, 72, 66, 60];
-const STEP_SOL = ['Do','Re','Mi','Fa','Sol','La','Si','Do'];
+const STEP_SOL = T[lang].stepSol;
 
 // ── Estado ───────────────────────────────────────────────────────────────────
 const S = {
@@ -421,7 +551,7 @@ function showHeader() {
   const hd = document.getElementById('hd');
   hd.style.display = 'flex';
   document.getElementById('hd-ico').textContent  = S.mode === 'oido' ? '🎧' : '🎼';
-  document.getElementById('hd-mode').textContent = S.mode === 'oido' ? 'Oído' : 'Escritura';
+  document.getElementById('hd-mode').textContent = S.mode === 'oido' ? L.modeAudioLabel : L.modeNotationLabel;
   document.getElementById('hd-level').textContent = LEVELS[S.level].label;
   updateHeader();
 }
@@ -488,11 +618,11 @@ async function showMyProgress() {
   document.getElementById('root').innerHTML = `
     <div style="display:flex;flex-direction:column;min-height:100%">
       <div class="study-bar">
-        <button class="btn-back-sm" id="prog-back">← Menú</button>
-        <span>📊 Mi Progreso</span>
+        <button class="btn-back-sm" id="prog-back">${L.back}</button>
+        <span>${L.progTitle}</span>
       </div>
       <div id="prog-body" style="display:flex;align-items:center;justify-content:center;flex:1;padding:32px 16px">
-        <div style="color:var(--g400)">Cargando…</div>
+        <div style="color:var(--g400)">${L.progLoading}</div>
       </div>
     </div>`;
   document.getElementById('prog-back').addEventListener('click', showModeSelect);
@@ -508,8 +638,8 @@ async function showMyProgress() {
     body.innerHTML = `
       <div style="text-align:center;color:var(--g400);padding:24px">
         <div style="font-size:2.5rem;margin-bottom:12px">🎧</div>
-        <p style="font-weight:600">Sin intentos aún</p>
-        <p style="font-size:.875rem;margin-top:6px">Juega en modo Oído o Escritura para ver tu progreso aquí.</p>
+        <p style="font-weight:600">${L.progEmpty}</p>
+        <p style="font-size:.875rem;margin-top:6px">${L.progEmptySub}</p>
       </div>`;
     return;
   }
@@ -523,9 +653,9 @@ async function showMyProgress() {
   body.innerHTML = `
     <div style="max-width:680px;margin:0 auto;width:100%">
       <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:20px">
-        <div class="stat-box"><div class="stat-v">${total}</div><div class="stat-l">Intentos</div></div>
-        <div class="stat-box"><div class="stat-v">${correct}</div><div class="stat-l">Correctos</div></div>
-        <div class="stat-box"><div class="stat-v" style="color:${globalColor}">${globalPct}%</div><div class="stat-l">Precisión global</div></div>
+        <div class="stat-box"><div class="stat-v">${total}</div><div class="stat-l">${L.progAttempts}</div></div>
+        <div class="stat-box"><div class="stat-v">${correct}</div><div class="stat-l">${L.progCorrect}</div></div>
+        <div class="stat-box"><div class="stat-v" style="color:${globalColor}">${globalPct}%</div><div class="stat-l">${L.progAccuracy}</div></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px">
         ${rows.map(r => {
@@ -542,7 +672,7 @@ async function showMyProgress() {
               <div style="height:5px;background:var(--g200);border-radius:3px;margin-bottom:8px">
                 <div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div>
               </div>
-              <div style="font-size:.75rem;color:var(--g400)">${r.correct}/${r.total} correctas</div>
+              <div style="font-size:.75rem;color:var(--g400)">${r.correct}/${r.total} ${L.progCorrectFrac}</div>
               <div style="font-size:.75rem;color:var(--g500);font-style:italic;margin-top:3px">${desc}</div>
             </div>`;
         }).join('')}
@@ -558,38 +688,38 @@ function showModeSelect() {
       <div class="brand-hd">
         <div class="brand-row">
           <span style="font-size:1.25rem">🎧</span>
-          <span class="brand-txt">Sonitus Intervalos</span>
+          <span class="brand-txt">${L.brandName}</span>
         </div>
-        <h1 class="page-h1">Escucha el Intervalo.<br>Identifícalo.</h1>
-        <p class="page-sub">Entrena tu oído y tu lectura musical. Aprende los 13 intervalos con retroalimentación de audio instantánea.</p>
-        <button class="btn-hero" id="hero-start-btn">▶ Empezar a Entrenar</button>
+        <h1 class="page-h1">${L.heroTitle}</h1>
+        <p class="page-sub">${L.heroSub}</p>
+        <button class="btn-hero" id="hero-start-btn">${L.heroBtn}</button>
       </div>
       <div class="mode-grid">
         <div class="mode-card" id="mc-oido">
           <div class="mode-card-ico">🎧</div>
-          <div class="mode-card-name">Oído</div>
-          <div class="mode-card-desc">Escucha el intervalo e identifica su nombre</div>
+          <div class="mode-card-name">${L.modeAudio}</div>
+          <div class="mode-card-desc">${L.modeAudioDesc}</div>
         </div>
         <div class="mode-card" id="mc-escritura">
           <div class="mode-card-ico">🎼</div>
-          <div class="mode-card-name">Escritura</div>
-          <div class="mode-card-desc">Lee las notas en el pentagrama e identifica el intervalo</div>
+          <div class="mode-card-name">${L.modeNotation}</div>
+          <div class="mode-card-desc">${L.modeNotationDesc}</div>
         </div>
         <div class="mode-card" id="mc-estudio">
           <div class="mode-card-ico">📚</div>
-          <div class="mode-card-name">Estudio</div>
-          <div class="mode-card-desc">Ve los 13 intervalos en el pentagrama y escúchalos</div>
+          <div class="mode-card-name">${L.modeStudy}</div>
+          <div class="mode-card-desc">${L.modeStudyDesc}</div>
         </div>
         <div class="mode-card" id="mc-game60">
           <div class="mode-card-ico">⏱</div>
-          <div class="mode-card-name">60 Segundos</div>
-          <div class="mode-card-desc">Identifica tantos intervalos como puedas antes de que acabe el tiempo</div>
+          <div class="mode-card-name">${L.mode60}</div>
+          <div class="mode-card-desc">${L.mode60Desc}</div>
         </div>
         <div class="mode-card" id="mc-progress" style="grid-column:1/-1;flex-direction:row;gap:14px;justify-content:flex-start;padding:16px 20px">
           <div class="mode-card-ico" style="font-size:2rem">📊</div>
           <div>
-            <div class="mode-card-name">Mi Progreso</div>
-            <div class="mode-card-desc">Ve tu precisión histórica por cada intervalo</div>
+            <div class="mode-card-name">${L.modeProgress}</div>
+            <div class="mode-card-desc">${L.modeProgressDesc}</div>
           </div>
         </div>
       </div>
@@ -605,15 +735,15 @@ function showModeSelect() {
 }
 
 // ── Modo Estudio ──────────────────────────────────────────────────────────────
-const IV_CHARS = ['La misma nota repetida. Unidad perfecta.','Paso cromático. Máxima tensión de 2.ª.','Paso natural de la escala mayor.','Color triste y melancólico.','Color alegre y brillante.','Salto limpio y estable.','Máxima tensión. Diabolus in musica.','Poder y estabilidad. El intervalo del rock.','Nostalgia, dulzura melancólica.','Amplitud y apertura. Muy cantabile.','Tensión que busca resolverse.','Tensión intensa, casi resuelta.','Regreso al origen, una octava arriba.'];
+const IV_CHARS = T[lang].ivChars;
 
 function showStudyMode() {
   hideHeader();
   document.getElementById('root').innerHTML = `
     <div style="display:flex;flex-direction:column;min-height:100%">
       <div class="study-bar">
-        <button class="btn-back-sm" id="study-back">← Menú</button>
-        <span>📚 Estudio — 13 Intervalos</span>
+        <button class="btn-back-sm" id="study-back">${L.back}</button>
+        <span>${L.studyTitle}</span>
       </div>
       <div class="study-grid">
         ${INTERVALS.map((iv, i) => `
@@ -622,15 +752,15 @@ function showStudyMode() {
             <div class="sc-staff">${buildStaffSVG(iv.st, false, null)}</div>
             <div class="sc-char">${IV_CHARS[i]}</div>
             <div class="sc-btns">
-              <button class="btn-hear" data-i="${i}" data-m="ascending">↗ Asc</button>
-              <button class="btn-hear" data-i="${i}" data-m="descending">↘ Des</button>
-              <button class="btn-hear" data-i="${i}" data-m="harmonic">≡ Arm</button>
+              <button class="btn-hear" data-i="${i}" data-m="ascending">${L.studyAsc}</button>
+              <button class="btn-hear" data-i="${i}" data-m="descending">${L.studyDesc}</button>
+              <button class="btn-hear" data-i="${i}" data-m="harmonic">${L.studyHarm}</button>
             </div>
           </div>`).join('')}
       </div>
     </div>`;
   document.getElementById('study-back').addEventListener('click', showModeSelect);
-  const labels = { ascending:'↗ Asc', descending:'↘ Des', harmonic:'≡ Arm' };
+  const labels = { ascending:L.studyAsc, descending:L.studyDesc, harmonic:L.studyHarm };
   document.querySelectorAll('.btn-hear').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (btn.classList.contains('playing')) return;
@@ -663,18 +793,18 @@ function startGame60() {
           <div class="timer-num" id="g60-num">60</div>
         </div>
         <div class="g60-scores">
-          <div class="g60-stat"><div class="val" id="g60-sc">0</div><div class="lbl">Correctas</div></div>
-          <div class="g60-stat"><div class="val" id="g60-rch">0</div><div class="lbl">Racha</div></div>
-          <div class="g60-stat"><div class="val" id="g60-pct">—</div><div class="lbl">Precisión</div></div>
+          <div class="g60-stat"><div class="val" id="g60-sc">0</div><div class="lbl">${L.correct}</div></div>
+          <div class="g60-stat"><div class="val" id="g60-rch">0</div><div class="lbl">${L.streak}</div></div>
+          <div class="g60-stat"><div class="val" id="g60-pct">—</div><div class="lbl">${L.accuracy}</div></div>
         </div>
       </div>
       <div class="g60-q-card">
-        <div class="g60-q-label">¿Qué intervalo es este?</div>
+        <div class="g60-q-label">${L.game60Q}</div>
         <div id="g60-staff"></div>
       </div>
       <div class="g60-fb" id="g60-fb"></div>
       <div class="answer-grid" id="g60-grid"></div>
-      <button class="btn-secondary" id="g60-quit" style="max-width:200px">✕ Salir</button>
+      <button class="btn-secondary" id="g60-quit" style="max-width:200px">${L.quit}</button>
     </div>`;
   document.getElementById('g60-quit').addEventListener('click', () => { clearInterval(G60.tid); G60.tid=null; showModeSelect(); });
   nextGame60Q();
@@ -725,7 +855,7 @@ function handleGame60Answer(chosen) {
     if(btn.dataset.name===correct) btn.classList.add(ok?'correct':'reveal');
   });
   const fb=document.getElementById('g60-fb');
-  if(fb){fb.className='g60-fb '+(ok?'ok':'err');fb.textContent=ok?`✓ ¡${correct}!`:`✗ Era: ${correct}`;}
+  if(fb){fb.className='g60-fb '+(ok?'ok':'err');fb.textContent=ok?`✓ ${correct}!`:`✗ ${L.wasInterval} ${correct}`;}
   saveAttempt(correct,chosen,ok,null);
   setTimeout(()=>{if(G60.timeLeft>0)nextGame60Q();},800);
 }
@@ -734,20 +864,20 @@ function showGame60Summary() {
   hideHeader();
   const pct=G60.total>0?Math.round(G60.score/G60.total*100):0;
   const emoji=pct>=80?'🏆':pct>=50?'⭐':'😊';
-  const msg=pct>=80?'¡Excelente oído!':pct>=50?'¡Buen trabajo!':'¡Sigue practicando!';
+  const msg=pct>=80?L.g60Excellent:pct>=50?L.g60Good:L.g60Practice;
   document.getElementById('root').innerHTML=`
     <div class="g60-sum">
       <div class="end-ico">${emoji}</div>
       <div class="end-title">${msg}</div>
       <div class="stat-row">
-        <div class="stat-box"><div class="stat-v">${G60.score}</div><div class="stat-l">Correctas</div></div>
-        <div class="stat-box"><div class="stat-v">${G60.total}</div><div class="stat-l">Total</div></div>
-        <div class="stat-box"><div class="stat-v">${pct}%</div><div class="stat-l">Precisión</div></div>
-        <div class="stat-box"><div class="stat-v">${G60.best}</div><div class="stat-l">Mejor racha</div></div>
+        <div class="stat-box"><div class="stat-v">${G60.score}</div><div class="stat-l">${L.correct}</div></div>
+        <div class="stat-box"><div class="stat-v">${G60.total}</div><div class="stat-l">${L.total}</div></div>
+        <div class="stat-box"><div class="stat-v">${pct}%</div><div class="stat-l">${L.accuracy}</div></div>
+        <div class="stat-box"><div class="stat-v">${G60.best}</div><div class="stat-l">${L.bestStreak}</div></div>
       </div>
       <div class="btn-row">
-        <button class="btn-primary" id="g60-again">▶ Jugar de nuevo</button>
-        <button class="btn-secondary" id="g60-menu">← Menú</button>
+        <button class="btn-primary" id="g60-again">${L.playAgain}</button>
+        <button class="btn-secondary" id="g60-menu">${L.back}</button>
       </div>
     </div>`;
   document.getElementById('g60-again').addEventListener('click',startGame60);
@@ -762,10 +892,10 @@ function showLevelSelect(mode) {
       <div class="brand-hd">
         <div class="brand-row">
           <span style="font-size:1.25rem">${mode === 'oido' ? '🎧' : '🎼'}</span>
-          <span class="brand-txt">Sonitus Intervalos</span>
+          <span class="brand-txt">${L.brandName}</span>
         </div>
-        <h1 class="page-h1">Elige el nivel</h1>
-        <p class="page-sub">Selecciona con cuántos intervalos quieres practicar</p>
+        <h1 class="page-h1">${L.levelTitle}</h1>
+        <p class="page-sub">${L.levelSub}</p>
       </div>
       <div class="level-grid">
         ${Object.entries(LEVELS).map(([key, lv]) => {
@@ -783,20 +913,20 @@ function showLevelSelect(mode) {
       </div>
       <div class="dir-section">
         ${mode === 'oido' ? `
-        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">Dirección</div>
+        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">${L.dirLabel}</div>
         <div class="dir-row" id="dir-row" style="margin-bottom:10px">
-          <button class="dir-btn active" data-pm="random">↕ Aleatoria</button>
-          <button class="dir-btn" data-pm="ascending">↗ Ascendente</button>
-          <button class="dir-btn" data-pm="descending">↘ Descendente</button>
-          <button class="dir-btn" data-pm="harmonic">≡ Armónico</button>
+          <button class="dir-btn active" data-pm="random">${L.dirRandom}</button>
+          <button class="dir-btn" data-pm="ascending">${L.dirAsc}</button>
+          <button class="dir-btn" data-pm="descending">${L.dirDesc}</button>
+          <button class="dir-btn" data-pm="harmonic">${L.dirHarm}</button>
         </div>` : ''}
-        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">Alteraciones</div>
+        <div class="dir-label" style="font-size:.7rem;margin-bottom:4px">${L.accLabel}</div>
         <div class="dir-row" id="acc-row">
-          <button class="dir-btn active" data-acc="all">Con ♭♯</button>
-          <button class="dir-btn" data-acc="natural">Sin ♭♯ — solo naturales</button>
+          <button class="dir-btn active" data-acc="all">${L.accAll}</button>
+          <button class="dir-btn" data-acc="natural">${L.accNatural}</button>
         </div>
       </div>
-      <button class="btn-back-sm" id="btn-back">← Volver</button>
+      <button class="btn-back-sm" id="btn-back">${L.backBtn}</button>
     </div>`;
   document.querySelectorAll('.level-card').forEach(el =>
     el.addEventListener('click', () => startGame(mode, el.dataset.level)));
@@ -870,11 +1000,11 @@ function renderAudioQ(interval, pm, choices) {
           <div class="note-dot ${isH ? 'playing' : ''}" id="note-b">♩</div>
         </div>
         <button class="btn-play" id="btn-replay" disabled>
-          <span class="spinner-sm"></span> Reproduciendo…
+          <span class="spinner-sm"></span> ${L.playing}
         </button>
-        <p class="hint-txt" id="hint-txt">Escucha con atención…</p>
+        <p class="hint-txt" id="hint-txt">${L.listenWait}</p>
       </div>
-      <p class="q-label">¿Qué intervalo escuchaste?</p>
+      <p class="q-label">${L.listenQ}</p>
       <div class="answer-grid" id="answer-grid">
         ${choices.map(c => `<button class="btn-ans" data-name="${c.name}" disabled>${c.name}</button>`).join('')}
       </div>
@@ -887,10 +1017,10 @@ function renderNotationQ(interval, choices) {
   document.getElementById('root').innerHTML = `
     <main>
       <div class="q-card">
-        <div class="mode-badge">🎼 Identifica el intervalo</div>
+        <div class="mode-badge">🎼 ${L.notationMode}</div>
         <div class="staff-wrap" id="staff-wrap">${buildStaffSVG(interval.st, false, null)}</div>
       </div>
-      <p class="q-label">¿Qué intervalo forman estas dos notas?</p>
+      <p class="q-label">${L.notationQ}</p>
       <div class="answer-grid" id="answer-grid">
         ${choices.map(c => `<button class="btn-ans" data-name="${c.name}">${c.name}</button>`).join('')}
       </div>
@@ -930,16 +1060,16 @@ function enableAnswers() {
     b.addEventListener('click', () => handleAnswer(b.dataset.name), { once: true });
   });
   const rp = document.getElementById('btn-replay');
-  if (rp) { rp.disabled = false; rp.innerHTML = '🔊 Reproducir de nuevo'; rp.onclick = replayAudio; }
+  if (rp) { rp.disabled = false; rp.innerHTML = L.replayBtn; rp.onclick = replayAudio; }
   const ht = document.getElementById('hint-txt');
-  if (ht) ht.textContent = 'Puedes escuchar las veces que quieras antes de responder';
+  if (ht) ht.textContent = L.listenHint;
 }
 
 async function replayAudio() {
   if (S.playing || S.answered) return;
   S.playing = true;
   const rp = document.getElementById('btn-replay');
-  if (rp) { rp.disabled = true; rp.innerHTML = '<span class="spinner-sm"></span> Reproduciendo…'; }
+  if (rp) { rp.disabled = true; rp.innerHTML = `<span class="spinner-sm"></span> ${L.playing}`; }
   document.querySelectorAll('.btn-ans').forEach(b => b.disabled = true);
   await playWithAnim(S.current.interval.st, S.current.pm);
   S.playing = false;
@@ -992,11 +1122,10 @@ async function handleAnswer(chosen) {
   const ivIdx = INTERVALS.findIndex(i => i.name === correct);
   const ivDesc = ivIdx >= 0 ? `<div style="font-size:.8rem;margin-top:5px;font-style:italic;opacity:.85">${IV_CHARS[ivIdx]}</div>` : '';
   if (ok) {
-    const msgs = ['¡Excelente!', '¡Correcto!', '¡Muy bien!', '¡Perfecto!'];
-    fb.innerHTML = `${pick(msgs)} <strong>${correct}</strong> — ${st} semitono${st !== 1 ? 's' : ''}`
+    fb.innerHTML = `${pick(L.correctMsgs)} <strong>${correct}</strong> — ${st} ${st !== 1 ? L.semitonesPl : L.semitoneSg}`
       + ` <span class="xp-pill">+${xp} XP</span>${S.streak >= 3 ? ' 🧠' : ''}${ivDesc}`;
   } else {
-    fb.innerHTML = `Era: <strong>${correct}</strong> — ${st} semitono${st !== 1 ? 's' : ''} &nbsp;⭐ −1${ivDesc}`;
+    fb.innerHTML = `${L.wasInterval} <strong>${correct}</strong> — ${st} ${st !== 1 ? L.semitonesPl : L.semitoneSg} &nbsp;⭐ −1${ivDesc}`;
   }
 
   saveAttempt(correct, chosen, ok, ms);
@@ -1014,16 +1143,16 @@ function showGameOver() {
   document.getElementById('root').innerHTML = `
     <div class="end-screen">
       <div class="end-ico">💔</div>
-      <div class="end-title">¡Se acabaron las vidas!</div>
-      <div class="end-sub">Llegaste a la pregunta ${S.qNum} de ${S.qTotal}</div>
+      <div class="end-title">${L.gameOverTitle}</div>
+      <div class="end-sub">${L.gameOverSub(S.qNum, S.qTotal)}</div>
       <div class="stat-row">
-        <div class="stat-box"><div class="stat-v">${S.roundCorrect}</div><div class="stat-l">Correctas</div></div>
-        <div class="stat-box"><div class="stat-v">${S.score}</div><div class="stat-l">XP ganados</div></div>
-        <div class="stat-box"><div class="stat-v">${S.maxStreak}</div><div class="stat-l">Racha máx.</div></div>
+        <div class="stat-box"><div class="stat-v">${S.roundCorrect}</div><div class="stat-l">${L.correct}</div></div>
+        <div class="stat-box"><div class="stat-v">${S.score}</div><div class="stat-l">${L.xpEarned}</div></div>
+        <div class="stat-box"><div class="stat-v">${S.maxStreak}</div><div class="stat-l">${L.maxStreak}</div></div>
       </div>
       <div class="btn-row">
-        <button class="btn-primary" id="btn-retry">Intentar de nuevo</button>
-        <button class="btn-secondary" id="btn-menu-go">Menú principal</button>
+        <button class="btn-primary" id="btn-retry">${L.retry}</button>
+        <button class="btn-secondary" id="btn-menu-go">${L.mainMenu}</button>
       </div>
     </div>`;
   document.getElementById('btn-retry').addEventListener('click', () => startGame(S.mode, S.level));
@@ -1035,7 +1164,7 @@ function showRoundEnd() {
   hideHeader();
   const pct  = Math.round((S.roundCorrect / S.qTotal) * 100);
   const ico  = pct >= 90 ? '🏆' : pct >= 70 ? '⭐' : pct >= 50 ? '👍' : '😊';
-  const msg  = pct >= 80 ? '¡Excelente ronda!' : pct >= 60 ? '¡Buen trabajo!' : '¡Sigue practicando!';
+  const msg  = pct >= 80 ? L.roundExcellent : pct >= 60 ? L.roundGood : L.roundPractice;
   const nextL = { easy: 'medium', medium: 'hard' };
   const canUp = pct >= 80 && S.level !== 'hard' && nextL[S.level];
 
@@ -1044,17 +1173,17 @@ function showRoundEnd() {
       <div class="end-ico">${ico}</div>
       <div class="end-title">${msg}</div>
       <div class="stat-row">
-        <div class="stat-box"><div class="stat-v">${S.roundCorrect}/${S.qTotal}</div><div class="stat-l">Correctas</div></div>
-        <div class="stat-box"><div class="stat-v">${S.roundXP}</div><div class="stat-l">XP ganados</div></div>
-        <div class="stat-box"><div class="stat-v">${S.maxStreak}</div><div class="stat-l">Racha máx.</div></div>
+        <div class="stat-box"><div class="stat-v">${S.roundCorrect}/${S.qTotal}</div><div class="stat-l">${L.correct}</div></div>
+        <div class="stat-box"><div class="stat-v">${S.roundXP}</div><div class="stat-l">${L.xpEarned}</div></div>
+        <div class="stat-box"><div class="stat-v">${S.maxStreak}</div><div class="stat-l">${L.maxStreak}</div></div>
       </div>
       <div class="rnd-bar"><div class="rnd-fill" id="rnd-fill" style="width:0%"></div></div>
-      <div style="font-size:.875rem;color:var(--g500)">${pct}% de precisión</div>
-      ${canUp ? `<div class="upgrade-box">🎯 ¡Estás listo para subir! Prueba el nivel <strong>${LEVELS[nextL[S.level]].label}</strong>.</div>` : ''}
+      <div style="font-size:.875rem;color:var(--g500)">${L.roundAccuracy(pct)}</div>
+      ${canUp ? `<div class="upgrade-box">${L.upgradeHint(LEVELS[nextL[S.level]].label)}</div>` : ''}
       <div class="btn-row">
-        <button class="btn-primary" id="btn-again">Jugar de nuevo</button>
-        ${canUp ? `<button class="btn-secondary" id="btn-up">Subir a ${LEVELS[nextL[S.level]].label} →</button>` : ''}
-        <button class="btn-secondary" id="btn-menu">Menú principal</button>
+        <button class="btn-primary" id="btn-again">${L.playAgain}</button>
+        ${canUp ? `<button class="btn-secondary" id="btn-up">${L.upgradeTo} ${LEVELS[nextL[S.level]].label} →</button>` : ''}
+        <button class="btn-secondary" id="btn-menu">${L.mainMenu}</button>
       </div>
     </div>`;
 

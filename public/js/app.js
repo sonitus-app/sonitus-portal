@@ -1,21 +1,18 @@
-import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-         signOut, onAuthStateChanged }
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection,
-         query, where, getDocs, orderBy, limit, serverTimestamp, increment }
+import { getFirestore, doc, getDoc, setDoc, getDocs, addDoc, updateDoc,
+         collection, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
-// ── Init Firebase ──────────────────────────────────────────────────────────
-const fbApp  = initializeApp(firebaseConfig);
-const auth   = getAuth(fbApp);
-const db     = getFirestore(fbApp);
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
 
 // ── Estado global ──────────────────────────────────────────────────────────
 const S = {
   user:          null,
-  firestoreUser: null,
   view:          'loading',
   toolSessionId: null,
   toolStart:     null,
@@ -196,88 +193,6 @@ function getLevelInfo(xp) {
   return { name: level.name, icon: level.icon, xp, nextLevelXp: level.nextMin, progress };
 }
 
-function getLocalDate() {
-  const now = new Date();
-  if (now.getHours() < 8) now.setDate(now.getDate() - 1);
-  return now.toISOString().slice(0, 10);
-}
-
-function getTodayChallenge() {
-  const today = getLocalDate();
-  const seed  = parseInt(today.replace(/-/g, ''), 10);
-  const pick  = CHALLENGE_POOL[seed % CHALLENGE_POOL.length];
-  return { date: today, tool: pick.tool, xp_reward: pick.xp, config: { description: pick.description, target: pick.target } };
-}
-
-// ── Firestore helpers ──────────────────────────────────────────────────────
-function userRef(uid)    { return doc(db, 'users', uid); }
-function sessionsCol(uid){ return collection(db, 'users', uid, 'sessions'); }
-function attemptsCol(uid){ return collection(db, 'users', uid, 'intervalAttempts'); }
-function achievCol(uid)  { return collection(db, 'users', uid, 'achievements'); }
-function chalCol(uid)    { return collection(db, 'users', uid, 'challengeCompletions'); }
-
-async function getUserData(uid) {
-  const snap = await getDoc(userRef(uid));
-  return snap.exists() ? snap.data() : null;
-}
-
-async function awardXp(uid, amount, reason) {
-  const userData = await getUserData(uid);
-  if (!userData) return;
-  const newXp    = (userData.xp || 0) + amount;
-  const levelInfo = getLevelInfo(newXp);
-  await updateDoc(userRef(uid), { xp: newXp, level: levelInfo.name });
-  if (levelInfo.name === 'Maestro') await grantAchievement(uid, 'maestro_nivel');
-
-  if (reason === 'session_complete') {
-    const today = new Date().toISOString().slice(0, 10);
-    const q = query(sessionsCol(uid), where('endTime', '!=', null), orderBy('endTime', 'desc'), limit(30));
-    const snap = await getDocs(q);
-    const dates = [...new Set(snap.docs.map(d => d.data().endTime?.toDate?.().toISOString().slice(0, 10)).filter(Boolean))];
-    const streak = calcStreak(dates);
-    await updateDoc(userRef(uid), { streak });
-    if (streak >= 7) await grantAchievement(uid, 'racha_7');
-    const totalSessions = snap.docs.filter(d => d.data().endTime).length;
-    if (totalSessions >= 1) await grantAchievement(uid, 'primera_sesion');
-    if (new Date().getHours() < 9) await grantAchievement(uid, 'madrugador');
-  }
-  if (reason === 'interval_correct') {
-    const snap = await getDocs(attemptsCol(uid));
-    const total   = snap.size;
-    const correct = snap.docs.filter(d => d.data().isCorrect).length;
-    if (correct >= 100) await grantAchievement(uid, 'intervalos_100');
-    if (total >= 20 && (correct / total) >= 0.9) await grantAchievement(uid, 'precision_90');
-  }
-}
-
-function calcStreak(sortedDates) {
-  if (!sortedDates.length) return 0;
-  const today     = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  if (sortedDates[0] !== today && sortedDates[0] !== yesterday) return 0;
-  let streak = 1;
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prev = new Date(sortedDates[i - 1] + 'T12:00:00Z');
-    const curr = new Date(sortedDates[i]     + 'T12:00:00Z');
-    if (Math.round((prev - curr) / 86400000) === 1) streak++;
-    else break;
-  }
-  return streak;
-}
-
-async function grantAchievement(uid, key) {
-  const ref  = doc(achievCol(uid), key);
-  const snap = await getDoc(ref);
-  if (snap.exists()) return;
-  const ach = ACHIEVEMENTS.find(a => a.key === key);
-  if (!ach) return;
-  await setDoc(ref, { key, name: ach.name, icon: ach.icon, description: ach.description, earnedAt: serverTimestamp() });
-  if (ach.xp > 0) {
-    const userData = await getUserData(uid);
-    const newXp = (userData?.xp || 0) + ach.xp;
-    await updateDoc(userRef(uid), { xp: newXp, level: getLevelInfo(newXp).name });
-  }
-}
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 function escHtml(str) {
@@ -304,6 +219,78 @@ function timeAgo(ts) {
 function fmtTimer(sec) {
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
   return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+// ── Firestore helpers ──────────────────────────────────────────────────────
+const userRef    = uid => doc(db, 'users', uid);
+const sessionsCol   = uid => collection(db, 'users', uid, 'sessions');
+const attemptsCol   = uid => collection(db, 'users', uid, 'intervalAttempts');
+const achievCol     = uid => collection(db, 'users', uid, 'achievements');
+const chalCol       = uid => collection(db, 'users', uid, 'challengeCompletions');
+
+async function getUserData(uid) {
+  const snap = await getDoc(userRef(uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+function getLocalDate() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function getTodayChallenge(uid) {
+  const today = getLocalDate();
+  const dateHash = today.replace(/-/g,'').split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  const ch = CHALLENGE_POOL[dateHash % CHALLENGE_POOL.length];
+  const compSnap = await getDoc(doc(chalCol(uid), today));
+  return { id: today, tool: ch.tool, xp_reward: ch.xp, config: { description: ch.description }, completed: compSnap.exists() };
+}
+
+async function awardXpDirect(uid, amount) {
+  if (!amount) return;
+  const snap = await getDoc(userRef(uid));
+  const xp = (snap.data()?.xp || 0) + amount;
+  await updateDoc(userRef(uid), { xp, level: getLevelInfo(xp).name });
+}
+
+async function grantAchievement(uid, key) {
+  const ach = ACHIEVEMENTS.find(a => a.key === key);
+  if (!ach) return;
+  const ref = doc(achievCol(uid), key);
+  if ((await getDoc(ref)).exists()) return;
+  await setDoc(ref, { ...ach, earnedAt: serverTimestamp() });
+  await awardXpDirect(uid, ach.xp);
+}
+
+async function awardXp(uid, amount, reason) {
+  const snap = await getDoc(userRef(uid));
+  const data = snap.data() || {};
+  const xp   = (data.xp || 0) + amount;
+  const lvl  = getLevelInfo(xp);
+  const today = getLocalDate();
+  const lastDate = data.lastActivity?.toDate ? data.lastActivity.toDate().toISOString().slice(0,10) : null;
+  const yest = new Date(); yest.setDate(yest.getDate()-1);
+  const yStr = yest.toISOString().slice(0,10);
+
+  let streak = data.streak || 0;
+  if (lastDate !== today) streak = lastDate === yStr ? streak + 1 : 1;
+
+  await updateDoc(userRef(uid), { xp, level: lvl.name, streak, lastActivity: serverTimestamp() });
+
+  if (reason === 'session_complete') {
+    const sessSnap = await getDocs(sessionsCol(uid));
+    if (sessSnap.size === 1) await grantAchievement(uid, 'primera_sesion');
+    if (lvl.name === 'Maestro') await grantAchievement(uid, 'maestro_nivel');
+    if (streak >= 7) await grantAchievement(uid, 'racha_7');
+    const hr = new Date().getHours();
+    if (hr < 9) await grantAchievement(uid, 'madrugador');
+  }
+  if (reason === 'interval_correct') {
+    const attSnap = await getDocs(attemptsCol(uid));
+    const correct = attSnap.docs.filter(d => d.data().isCorrect).length;
+    if (correct >= 100) await grantAchievement(uid, 'intervalos_100');
+    if (attSnap.size >= 10 && correct / attSnap.size >= 0.9) await grantAchievement(uid, 'precision_90');
+  }
 }
 
 const appEl = document.getElementById('app');
@@ -366,16 +353,14 @@ function showLogin(msg = '', isSuccess = false) {
     try {
       const cred = await signInWithEmailAndPassword(auth, `${username}@sonitus.portal`, password);
       const userData = await getUserData(cred.user.uid);
+      if (!userData) { await signOut(auth); return showLogin(t('loginErrCred')); }
       S.user = { id: cred.user.uid, username: userData.username, fullName: userData.fullName, role: userData.role };
-      S.firestoreUser = userData;
       if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
       loadDashboard();
     } catch (err) {
-      console.error('Login error:', err.code, err.message);
-      const credErrors = ['auth/invalid-credential','auth/user-not-found','auth/wrong-password','auth/invalid-email'];
-      const errMsg = credErrors.includes(err.code)
-        ? t('loginErrCred')
-        : `${t('loginErrGen')} (${err.code})`;
+      const code = err.code ?? '';
+      const errMsg = (code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-credential')
+        ? t('loginErrCred') : t('loginErrGen');
       showLogin(errMsg);
     }
   });
@@ -438,7 +423,7 @@ function showRegister(msg = '') {
 
     try {
       const cred = await createUserWithEmailAndPassword(auth, `${username}@sonitus.portal`, password);
-      await setDoc(userRef(cred.user.uid), {
+      await setDoc(doc(db, 'users', cred.user.uid), {
         username, fullName, role: 'student',
         xp: 0, level: 'Aprendiz', streak: 0,
         createdAt: serverTimestamp(), lastActivity: serverTimestamp(),
@@ -446,9 +431,7 @@ function showRegister(msg = '') {
       await signOut(auth);
       showLogin(t('regSuccess'), true);
     } catch (err) {
-      const errMsg = err.code === 'auth/email-already-in-use'
-        ? t('regErrExists')
-        : t('regErrGen');
+      const errMsg = err.code === 'auth/email-already-in-use' ? t('regErrExists') : t('regErrGen');
       showRegister(errMsg);
     }
   });
@@ -459,49 +442,41 @@ function showRegister(msg = '') {
 async function loadDashboard() {
   showLoading();
   try {
-  const uid = S.user.id;
+    const uid = S.user.id;
+    const [userSnap, sessSnap, attSnap, achievSnap] = await Promise.all([
+      getDoc(userRef(uid)),
+      getDocs(sessionsCol(uid)),
+      getDocs(attemptsCol(uid)),
+      getDocs(achievCol(uid)),
+    ]);
 
-  const [sessSnap, attSnap, achSnap] = await Promise.all([
-    getDocs(query(sessionsCol(uid), orderBy('startTime', 'desc'), limit(100))),
-    getDocs(attemptsCol(uid)),
-    getDocs(achievCol(uid)),
-  ]);
+    const userData  = userSnap.data() || {};
+    const sessions  = sessSnap.docs.map(d => d.data());
+    const attempts  = attSnap.docs.map(d => d.data());
+    const earnedKeys = new Set(achievSnap.docs.map(d => d.id));
 
-  const sessions  = sessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const attempts  = attSnap.docs.map(d => d.data());
-  const badges    = achSnap.docs.map(d => d.data()).sort((a, b) => a.earnedAt?.seconds - b.earnedAt?.seconds);
+    const actStats = {
+      intervalAttempts: { total: attempts.length, correct: attempts.filter(a => a.isCorrect).length },
+    };
+    ['studio','academia','intervaltrainer','rhythmtrainer'].forEach(tool => {
+      const ts = sessions.filter(s => s.tool === tool);
+      if (!ts.length) { actStats[tool] = null; return; }
+      const last = ts.reduce((m,s) => (s.startTime?.seconds||0) > (m?.startTime?.seconds||0) ? s : m, null);
+      actStats[tool] = { sessions: ts.length, total_seconds: ts.reduce((a,s) => a+(s.durationSeconds||0), 0), last_used: last?.startTime ?? null };
+    });
 
-  const toolStats = {};
-  for (const tool of ['studio', 'academia', 'intervaltrainer', 'rhythmtrainer']) {
-    const ts = sessions.filter(s => s.tool === tool && s.durationSeconds > 0);
-    toolStats[tool] = ts.length
-      ? { sessions: ts.length, total_seconds: ts.reduce((a, s) => a + (s.durationSeconds || 0), 0), last_used: ts[0]?.startTime }
-      : null;
-  }
+    const xp = userData.xp || 0;
+    const dc = await getTodayChallenge(uid);
+    const gami = {
+      xp,
+      level: getLevelInfo(xp),
+      streak: userData.streak || 0,
+      badges: ACHIEVEMENTS.filter(a => earnedKeys.has(a.key)).map(a => ({ ...a, earned_at: null })),
+      dailyChallenge: dc,
+    };
 
-  const userData = await getUserData(uid);
-  S.firestoreUser = userData;
-  const xp       = userData?.xp || 0;
-  const levelInfo = getLevelInfo(xp);
-  const streak    = userData?.streak || 0;
-
-  const challenge    = getTodayChallenge();
-  const chalRef      = doc(chalCol(uid), challenge.date);
-  const chalSnap     = await getDoc(chalRef);
-  challenge.completed = chalSnap.exists();
-  S.dailyChallenge   = challenge;
-
-  const ivTotal   = attempts.length;
-  const ivCorrect = attempts.filter(a => a.isCorrect).length;
-
-  const stats = {
-    studio: toolStats.studio, academia: toolStats.academia,
-    intervaltrainer: toolStats.intervaltrainer,
-    rhythmtrainer: toolStats.rhythmtrainer,
-    intervalAttempts: { total: ivTotal, correct: ivCorrect },
-  };
-  const gami = { level: levelInfo, badges, streak, dailyChallenge: challenge };
-  showDashboard(stats, gami);
+    S.dailyChallenge = dc;
+    showDashboard(actStats, gami);
   } catch (err) {
     console.error('Dashboard error:', err);
     showLogin(t('loginErrGen'));
@@ -696,7 +671,7 @@ async function openTool(tool) {
 function showToolView(tool) {
   S.view = 'tool';
   const label = t('toolLabels')[tool] ?? tool;
-  const src   = `tools/sonitus-${tool}.html?tsid=${S.toolSessionId}`;
+  const src   = `tools/sonitus-${tool}.html?tsid=${S.toolSessionId}&lang=${S.lang}`;
 
   appEl.innerHTML = `
     <div id="view-tool">
@@ -744,10 +719,10 @@ async function closeTool() {
 
   const dc = S.dailyChallenge;
   if (dc && !dc.completed && dc.tool === S.currentTool) {
-    const chalRef = doc(chalCol(uid), dc.date);
-    const already = await getDoc(chalRef);
-    if (!already.exists()) {
-      await setDoc(chalRef, { challengeDate: dc.date, completedAt: serverTimestamp(), score: 0 });
+    const today = getLocalDate();
+    const chalRef = doc(chalCol(uid), today);
+    if (!(await getDoc(chalRef)).exists()) {
+      await setDoc(chalRef, { completedAt: serverTimestamp(), xp: dc.xp_reward, tool: dc.tool });
       await awardXp(uid, dc.xp_reward, 'challenge_complete');
     }
   }
@@ -781,9 +756,6 @@ window.addEventListener('message', async e => {
     });
     if (data.isCorrect) await awardXp(S.user.id, 1, 'interval_correct');
   }
-  if (type === 'TOOL_EVENT') {
-    // events logged to the session doc
-  }
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -793,7 +765,6 @@ onAuthStateChanged(auth, async fbUser => {
       const userData = await getUserData(fbUser.uid);
       if (!userData) { await signOut(auth); showLogin(); return; }
       S.user = { id: fbUser.uid, username: userData.username, fullName: userData.fullName, role: userData.role };
-      S.firestoreUser = userData;
       if (userData.role === 'teacher') { window.location.href = 'admin.html'; return; }
       loadDashboard();
     } else {
